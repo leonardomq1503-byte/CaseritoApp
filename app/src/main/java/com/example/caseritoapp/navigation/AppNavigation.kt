@@ -9,9 +9,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.navArgument
 import com.example.caseritoapp.ui.alerts.AlertsScreen
+import com.example.caseritoapp.ui.auth.LoginScreen
+import com.example.caseritoapp.ui.auth.RegistroScreen
+import com.example.caseritoapp.ui.auth.VerificacionScreen
 import com.example.caseritoapp.ui.home.HomeScreen
 import com.example.caseritoapp.ui.map.MapScreen
 import com.example.caseritoapp.ui.profile.ProfileScreen
@@ -53,7 +58,65 @@ fun AppNavigation(
         }
 
         composable(Screen.Profile.route) {
-            ProfileScreen()
+            ProfileScreen(
+                onNavigateToLogin = { navController.navigate(Screen.Login.route) }
+            )
+        }
+
+        // Flujos de Autenticación
+        composable(Screen.Login.route) {
+            LoginScreen(
+                onLoginSuccess = {
+                    navController.navigate(Screen.Profile.route) {
+                        popUpTo(Screen.Home.route)
+                    }
+                },
+                onNavigateToRegister = {
+                    navController.navigate(Screen.Register.route)
+                },
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        composable(Screen.Register.route) {
+            RegistroScreen(
+                onNavigateToVerification = { destination ->
+                    navController.navigate(Screen.Verification.createRoute(destination))
+                },
+                onNavigateToLogin = {
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(Screen.Login.route) { inclusive = true }
+                    }
+                },
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        composable(
+            route = Screen.Verification.route,
+            arguments = listOf(
+                navArgument("destination") {
+                    type = NavType.StringType
+                    defaultValue = "correo"
+                }
+            )
+        ) { backStackEntry ->
+            val destination = backStackEntry.arguments?.getString("destination") ?: "correo"
+            VerificacionScreen(
+                destino = destination,
+                onVerificationSuccess = {
+                    navController.navigate(Screen.Profile.route) {
+                        popUpTo(Screen.Home.route)
+                    }
+                },
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
         }
     }
 }

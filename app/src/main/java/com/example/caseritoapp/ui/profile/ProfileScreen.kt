@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun ProfileScreen(
+    onNavigateToLogin: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -205,10 +206,17 @@ fun ProfileScreen(
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f))
                 PerfilOpcionFila(
+                    icono = Icons.Outlined.Person,
+                    titulo = "Iniciar o Cambiar de Cuenta",
+                    subtitulo = "Acceder con otro usuario o registrar tienda",
+                    onClick = onNavigateToLogin
+                )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f))
+                PerfilOpcionFila(
                     icono = Icons.AutoMirrored.Outlined.ExitToApp,
                     titulo = "Cerrar Sesión",
                     colorTitulo = MaterialTheme.colorScheme.error,
-                    onClick = {}
+                    onClick = onNavigateToLogin
                 )
             }
         }

@@ -9,11 +9,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.caseritoapp.navigation.AppNavigation
 import com.example.caseritoapp.navigation.CaseritoBottomBar
+import com.example.caseritoapp.navigation.Screen
 import com.example.caseritoapp.ui.theme.CaseritoAppTheme
 
 class MainActivity : ComponentActivity() {
@@ -31,13 +34,20 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun CaseritoMainApp() {
     val navController = rememberNavController()
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
+
+    // Ocultar barra inferior cuando estamos en pantallas de autenticación o flujos modales
+    val showBottomBar = Screen.bottomNavItems.any { it.route == currentRoute }
 
     Scaffold(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background),
         bottomBar = {
-            CaseritoBottomBar(navController = navController)
+            if (showBottomBar) {
+                CaseritoBottomBar(navController = navController)
+            }
         }
     ) { innerPadding ->
         AppNavigation(

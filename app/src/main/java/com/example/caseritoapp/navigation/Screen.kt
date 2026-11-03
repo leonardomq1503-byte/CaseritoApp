@@ -54,6 +54,29 @@ sealed class Screen(
         unselectedIcon = Icons.Outlined.Person
     )
 
+    data object Login : Screen(
+        route = "login",
+        title = "Iniciar Sesión",
+        selectedIcon = Icons.Filled.Person,
+        unselectedIcon = Icons.Outlined.Person
+    )
+
+    data object Register : Screen(
+        route = "register",
+        title = "Registro",
+        selectedIcon = Icons.Filled.Person,
+        unselectedIcon = Icons.Outlined.Person
+    )
+
+    data object Verification : Screen(
+        route = "verification/{destination}",
+        title = "Verificación",
+        selectedIcon = Icons.Filled.Person,
+        unselectedIcon = Icons.Outlined.Person
+    ) {
+        fun createRoute(destination: String = "correo") = "verification/$destination"
+    }
+
     companion object {
         val bottomNavItems = listOf(Home, Search, Map, Alerts, Profile)
     }
