@@ -16,7 +16,7 @@ import androidx.room.PrimaryKey
             entity = UsuarioEntity::class,
             parentColumns = ["id"],
             childColumns = ["id_cuenta_responsable"],
-            onDelete = ForeignKey.RESTRICT
+            onDelete = ForeignKey.SET_NULL
         )
     ],
     indices = [
@@ -28,7 +28,7 @@ data class TiendaEntity(
     val id: Long = 0,
 
     @ColumnInfo(name = "id_cuenta_responsable")
-    val idCuentaResponsable: Long,
+    val idCuentaResponsable: Long? = null,
 
     @ColumnInfo(name = "nombre_comercial")
     val nombreComercial: String,
