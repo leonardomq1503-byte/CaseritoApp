@@ -27,6 +27,7 @@ import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -36,6 +37,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,6 +46,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -52,20 +55,39 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.caseritoapp.CaseritoApplication
+import com.example.caseritoapp.ui.viewmodel.AuthViewModel
+import com.example.caseritoapp.ui.viewmodel.CaseritoViewModelFactory
 
 @Composable
 fun LoginScreen(
     onLoginSuccess: () -> Unit,
     onNavigateToRegister: () -> Unit,
     onNavigateBack: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    viewModel: AuthViewModel = viewModel(
+        factory = CaseritoViewModelFactory(
+            LocalContext.current.applicationContext as CaseritoApplication
+        )
+    )
 ) {
+    val authState by viewModel.uiState.collectAsStateWithLifecycle()
+
     var emailOrPhone by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var localErrorMessage by remember { mutableStateOf<String?>(null) }
 
     val focusManager = LocalFocusManager.current
+
+    LaunchedEffect(authState.loginSuccess) {
+        if (authState.loginSuccess) {
+            viewModel.limpiarEstado()
+            onLoginSuccess()
+        }
+    }
 
     Column(
         modifier = modifier
@@ -131,7 +153,7 @@ fun LoginScreen(
 
         // Campo: Correo o Teléfono
         Text(
-            text = "Correo o celular",
+            text = "Correo electrónico",
             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
             color = MaterialTheme.colorScheme.onSurface
         )
@@ -142,9 +164,9 @@ fun LoginScreen(
             value = emailOrPhone,
             onValueChange = {
                 emailOrPhone = it
-                errorMessage = null
+                localErrorMessage = null
             },
-            placeholder = { Text("ejemplo@correo.com o 999 999 999") },
+            placeholder = { Text("ejemplo@correo.com") },
             leadingIcon = {
                 Icon(
                     imageVector = Icons.Outlined.Email,
@@ -183,7 +205,7 @@ fun LoginScreen(
             value = password,
             onValueChange = {
                 password = it
-                errorMessage = null
+                localErrorMessage = null
             },
             placeholder = { Text("Ingresa tu contraseña") },
             leadingIcon = {
@@ -213,9 +235,9 @@ fun LoginScreen(
                 onDone = {
                     focusManager.clearFocus()
                     if (emailOrPhone.isNotBlank() && password.isNotBlank()) {
-                        onLoginSuccess()
+                        viewModel.signIn(emailOrPhone, password)
                     } else {
-                        errorMessage = "Por favor completa todos los campos"
+                        localErrorMessage = "Por favor completa todos los campos"
                     }
                 }
             ),
@@ -241,10 +263,11 @@ fun LoginScreen(
         }
 
         // Mensaje de error si aplica
-        if (errorMessage != null) {
+        val errorAMostrar = localErrorMessage ?: authState.errorMessage
+        if (errorAMostrar != null) {
             Spacer(modifier = Modifier.height(6.dp))
             Text(
-                text = errorMessage!!,
+                text = errorAMostrar,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.fillMaxWidth(),
@@ -254,16 +277,17 @@ fun LoginScreen(
 
         Spacer(modifier = Modifier.height(14.dp))
 
-        // Botón principal: Iniciar Sesión
+        // Botón principal: Iniciar Sesión con indicador de carga
         Button(
             onClick = {
                 focusManager.clearFocus()
                 if (emailOrPhone.isNotBlank() && password.isNotBlank()) {
-                    onLoginSuccess()
+                    viewModel.signIn(emailOrPhone, password)
                 } else {
-                    errorMessage = "Por favor completa todos los campos"
+                    localErrorMessage = "Por favor completa todos los campos"
                 }
             },
+            enabled = !authState.isLoading,
             shape = RoundedCornerShape(14.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.primary
@@ -272,11 +296,19 @@ fun LoginScreen(
                 .fillMaxWidth()
                 .height(52.dp)
         ) {
-            Text(
-                text = "Iniciar Sesión",
-                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.onPrimary
-            )
+            if (authState.isLoading) {
+                CircularProgressIndicator(
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.size(24.dp),
+                    strokeWidth = 2.dp
+                )
+            } else {
+                Text(
+                    text = "Iniciar Sesión",
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onPrimary
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(28.dp))

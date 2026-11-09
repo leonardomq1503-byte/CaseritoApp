@@ -1,5 +1,6 @@
 package com.example.caseritoapp.data.repository
 
+import com.example.caseritoapp.data.local.dao.OfertaConDetalle
 import com.example.caseritoapp.data.local.dao.OfertaDao
 import com.example.caseritoapp.data.local.entity.CategoriaEntity
 import com.example.caseritoapp.data.local.entity.ProductoOfertaEntity
@@ -19,6 +20,7 @@ class OfertaRepository(
 ) {
     // Single Source of Truth: La UI siempre observa desde Room
     val ofertasActivas: Flow<List<ProductoOfertaEntity>> = ofertaDao.getOfertasActivas()
+    val ofertasConDetalle: Flow<List<OfertaConDetalle>> = ofertaDao.getOfertasConDetalle()
     val categorias: Flow<List<CategoriaEntity>> = ofertaDao.getCategorias()
 
     fun getOfertasPorCategoria(categoriaId: Long): Flow<List<ProductoOfertaEntity>> {

@@ -1,7 +1,9 @@
 package com.example.caseritoapp.data.local.dao
 
+import androidx.room.ColumnInfo
 import androidx.room.Dao
 import androidx.room.Delete
+import androidx.room.Embedded
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
@@ -11,8 +13,26 @@ import com.example.caseritoapp.data.local.entity.ImagenProductoEntity
 import com.example.caseritoapp.data.local.entity.ProductoOfertaEntity
 import kotlinx.coroutines.flow.Flow
 
+data class OfertaConDetalle(
+    @Embedded val oferta: ProductoOfertaEntity,
+    @ColumnInfo(name = "nombre_tienda") val nombreTienda: String? = null,
+    @ColumnInfo(name = "nombre_sucursal") val nombreSucursal: String? = null,
+    @ColumnInfo(name = "nombre_categoria") val nombreCategoria: String? = null
+)
+
 @Dao
 interface OfertaDao {
+
+    @Query("""
+        SELECT o.*, t.nombre_comercial AS nombre_tienda, u.nombre_sucursal AS nombre_sucursal, c.nombre AS nombre_categoria
+        FROM productos_oferta o
+        LEFT JOIN ubicaciones u ON o.id_ubicacion = u.id
+        LEFT JOIN tiendas t ON u.id_tienda = t.id
+        LEFT JOIN categorias c ON o.id_categoria = c.id
+        WHERE o.estado = 'activo'
+        ORDER BY o.fecha_inicio DESC
+    """)
+    fun getOfertasConDetalle(): Flow<List<OfertaConDetalle>>
 
     @Query("SELECT * FROM productos_oferta WHERE estado = 'activo' ORDER BY fecha_inicio DESC")
     fun getOfertasActivas(): Flow<List<ProductoOfertaEntity>>

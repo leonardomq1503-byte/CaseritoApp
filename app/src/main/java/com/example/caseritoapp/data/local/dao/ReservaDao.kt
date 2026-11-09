@@ -13,6 +13,9 @@ interface ReservaDao {
     @Query("SELECT * FROM reservas WHERE id_usuario = :idUsuario ORDER BY fecha_reserva DESC")
     fun getReservasPorUsuario(idUsuario: Long): Flow<List<ReservaEntity>>
 
+    @Query("SELECT COUNT(*) FROM reservas WHERE id_usuario = :idUsuario AND estado = 'pendiente'")
+    fun contarReservasActivas(idUsuario: Long): Flow<Int>
+
     @Query("SELECT * FROM reservas WHERE id = :id LIMIT 1")
     suspend fun getReservaPorId(id: Long): ReservaEntity?
 

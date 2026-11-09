@@ -16,6 +16,12 @@ interface FavoritoDao {
     @Query("SELECT * FROM favoritos WHERE id_usuario = :idUsuario AND tipo = :tipo ORDER BY fecha_creacion DESC")
     fun getFavoritosPorTipo(idUsuario: Long, tipo: String): Flow<List<FavoritoEntity>>
 
+    @Query("SELECT id_objeto FROM favoritos WHERE id_usuario = :idUsuario AND tipo = :tipo")
+    fun getIdsFavoritos(idUsuario: Long, tipo: String): Flow<List<Long>>
+
+    @Query("SELECT COUNT(*) FROM favoritos WHERE id_usuario = :idUsuario")
+    fun contarFavoritos(idUsuario: Long): Flow<Int>
+
     @Query("SELECT * FROM favoritos WHERE id_usuario = :idUsuario AND tipo = :tipo AND id_objeto = :idObjeto LIMIT 1")
     suspend fun getFavorito(idUsuario: Long, tipo: String, idObjeto: Long): FavoritoEntity?
 

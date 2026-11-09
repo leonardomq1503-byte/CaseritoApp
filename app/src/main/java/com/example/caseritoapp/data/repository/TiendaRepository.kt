@@ -19,7 +19,12 @@ class TiendaRepository(
 ) {
     // Single Source of Truth
     val tiendasVerificadas: Flow<List<TiendaEntity>> = tiendaDao.getTiendasVerificadas()
+    val todasLasTiendas: Flow<List<TiendaEntity>> = tiendaDao.getTodasLasTiendas()
     val ubicacionesActivas: Flow<List<UbicacionEntity>> = tiendaDao.getTodasUbicacionesActivas()
+
+    fun buscarTiendas(query: String): Flow<List<TiendaEntity>> {
+        return tiendaDao.buscarTiendas(query)
+    }
 
     fun getUbicacionesPorTienda(idTienda: Long): Flow<List<UbicacionEntity>> {
         return tiendaDao.getUbicacionesPorTienda(idTienda)

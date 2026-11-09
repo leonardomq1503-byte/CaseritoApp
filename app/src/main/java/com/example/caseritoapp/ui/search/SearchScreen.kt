@@ -17,24 +17,38 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.caseritoapp.CaseritoApplication
 import com.example.caseritoapp.ui.components.BuscadorCaserito
 import com.example.caseritoapp.ui.components.CategoriaChip
+import com.example.caseritoapp.ui.components.OfertaCard
 import com.example.caseritoapp.ui.components.TiendaCard
+import com.example.caseritoapp.ui.viewmodel.CaseritoViewModelFactory
+import com.example.caseritoapp.ui.viewmodel.SearchViewModel
 
 @Composable
 fun SearchScreen(
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    viewModel: SearchViewModel = viewModel(
+        factory = CaseritoViewModelFactory(
+            LocalContext.current.applicationContext as CaseritoApplication
+        )
+    )
 ) {
-    var searchQuery by remember { mutableStateOf("") }
-    var categoriaSeleccionada by remember { mutableStateOf("Todas") }
-    val categorias = listOf("Todas", "Ropa", "Electrónica", "Hogar", "Deportes", "Comida")
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    val categoriasNombres = remember(uiState.categorias) {
+        val list = mutableListOf("Todas")
+        list.addAll(uiState.categorias.map { it.nombre })
+        list.distinct()
+    }
 
     Column(
         modifier = modifier
@@ -49,32 +63,32 @@ fun SearchScreen(
             modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 8.dp)
         )
 
-        // Buscador
+        // Buscador reactivo
         BuscadorCaserito(
-            query = searchQuery,
-            onQueryChange = { searchQuery = it },
+            query = uiState.query,
+            onQueryChange = { viewModel.onQueryChange(it) },
             placeholderText = "¿Qué oferta buscas hoy?",
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
         )
 
-        // Filtro de categorías
+        // Filtro de categorías reactivo
         Spacer(modifier = Modifier.height(10.dp))
         LazyRow(
             contentPadding = PaddingValues(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(categorias) { cat ->
+            items(categoriasNombres) { cat ->
                 CategoriaChip(
                     nombre = cat,
-                    seleccionado = categoriaSeleccionada == cat,
-                    onClick = { categoriaSeleccionada = cat }
+                    seleccionado = uiState.categoriaSeleccionada == cat,
+                    onClick = { viewModel.onCategoriaChange(cat) }
                 )
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Resultados
+        // Conteo de resultados dinámico
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -83,12 +97,12 @@ fun SearchScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "Resultados cercanos",
+                text = "Resultados encontrados",
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurface
             )
             Text(
-                text = "3 tiendas encontradas",
+                text = "${uiState.totalResultados} coincidencias",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -101,35 +115,75 @@ fun SearchScreen(
             verticalArrangement = Arrangement.spacedBy(10.dp),
             modifier = Modifier.fillMaxSize()
         ) {
-            item {
-                TiendaCard(
-                    nombre = "TecnoStore",
-                    categoria = "Electrónica",
-                    direccion = "Av. Larco 450",
-                    distanciaAprox = "A 350 m",
-                    cantidadOfertasActivas = 8,
-                    onClick = {}
-                )
+            // Ofertas encontradas
+            if (uiState.ofertas.isNotEmpty()) {
+                item {
+                    Text(
+                        text = "Ofertas (${uiState.ofertas.size})",
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    )
+                }
+
+                item {
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(uiState.ofertas, key = { it.oferta.id }) { item ->
+                            val oferta = item.oferta
+                            val porcentajeDesc = if (oferta.precioOriginal > 0) {
+                                (((oferta.precioOriginal - oferta.precioOferta) / oferta.precioOriginal) * 100).toInt()
+                            } else 0
+
+                            OfertaCard(
+                                nombre = oferta.nombre,
+                                tienda = item.nombreTienda ?: item.nombreSucursal ?: "Tienda Caserito",
+                                precioOriginal = oferta.precioOriginal,
+                                precioOferta = oferta.precioOferta,
+                                porcentajeDescuento = porcentajeDesc,
+                                esFavorito = false,
+                                onFavoritoClick = {},
+                                stockRestante = oferta.stockDisponible,
+                                onClick = {}
+                            )
+                        }
+                    }
+                }
             }
-            item {
-                TiendaCard(
-                    nombre = "Moda & Estilo",
-                    categoria = "Ropa",
-                    direccion = "Calle Cantuarias 120",
-                    distanciaAprox = "A 600 m",
-                    cantidadOfertasActivas = 14,
-                    onClick = {}
-                )
+
+            // Tiendas encontradas
+            if (uiState.tiendas.isNotEmpty()) {
+                item {
+                    Text(
+                        text = "Tiendas (${uiState.tiendas.size})",
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(top = 10.dp, bottom = 4.dp)
+                    )
+                }
+
+                items(uiState.tiendas, key = { it.id }) { tienda ->
+                    TiendaCard(
+                        nombre = tienda.nombreComercial,
+                        categoria = tienda.categoriaPrincipal ?: "Comercio Local",
+                        direccion = tienda.razonSocial ?: "Lima, Perú",
+                        distanciaAprox = "Cerca de tu zona",
+                        cantidadOfertasActivas = 3,
+                        onClick = {}
+                    )
+                }
             }
-            item {
-                TiendaCard(
-                    nombre = "Bazar Don Pepe",
-                    categoria = "Hogar",
-                    direccion = "Av. Benavides 1100",
-                    distanciaAprox = "A 950 m",
-                    cantidadOfertasActivas = 5,
-                    onClick = {}
-                )
+
+            if (uiState.ofertas.isEmpty() && uiState.tiendas.isEmpty()) {
+                item {
+                    Text(
+                        text = "No se encontraron resultados para '${uiState.query}'. Intenta con otro término o categoría.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 32.dp)
+                    )
+                }
             }
         }
     }

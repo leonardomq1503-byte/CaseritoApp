@@ -37,6 +37,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -45,6 +46,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -54,6 +56,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -62,14 +65,26 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.caseritoapp.CaseritoApplication
+import com.example.caseritoapp.ui.viewmodel.AuthViewModel
+import com.example.caseritoapp.ui.viewmodel.CaseritoViewModelFactory
 
 @Composable
 fun RegistroScreen(
     onNavigateToVerification: (String) -> Unit,
     onNavigateToLogin: () -> Unit,
     onNavigateBack: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    viewModel: AuthViewModel = viewModel(
+        factory = CaseritoViewModelFactory(
+            LocalContext.current.applicationContext as CaseritoApplication
+        )
+    )
 ) {
+    val authState by viewModel.uiState.collectAsStateWithLifecycle()
+
     // Tipo de cuenta: 'cliente' o 'staff_tienda'
     var tipoUsuario by remember { mutableStateOf("cliente") }
 
@@ -82,9 +97,16 @@ fun RegistroScreen(
     var passwordConfirm by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
     var aceptaTerminos by remember { mutableStateOf(false) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var localErrorMessage by remember { mutableStateOf<String?>(null) }
 
     val focusManager = LocalFocusManager.current
+
+    LaunchedEffect(authState.registerSuccess) {
+        if (authState.registerSuccess) {
+            viewModel.limpiarEstado()
+            onNavigateToVerification(email)
+        }
+    }
 
     Column(
         modifier = modifier
@@ -170,7 +192,7 @@ fun RegistroScreen(
             value = nombreCompleto,
             onValueChange = {
                 nombreCompleto = it
-                errorMessage = null
+                localErrorMessage = null
             },
             placeholder = { Text("Ej. Carlos Ramos") },
             leadingIcon = {
@@ -200,7 +222,7 @@ fun RegistroScreen(
                 value = nombreTienda,
                 onValueChange = {
                     nombreTienda = it
-                    errorMessage = null
+                    localErrorMessage = null
                 },
                 placeholder = { Text("Ej. TecnoStore o Bodega San Juan") },
                 leadingIcon = {
@@ -233,7 +255,7 @@ fun RegistroScreen(
             value = email,
             onValueChange = {
                 email = it
-                errorMessage = null
+                localErrorMessage = null
             },
             placeholder = { Text("ejemplo@correo.com") },
             leadingIcon = {
@@ -268,7 +290,7 @@ fun RegistroScreen(
             value = telefono,
             onValueChange = {
                 telefono = it
-                errorMessage = null
+                localErrorMessage = null
             },
             placeholder = { Text("Ej. 987 654 321") },
             leadingIcon = {
@@ -332,7 +354,7 @@ fun RegistroScreen(
             value = password,
             onValueChange = {
                 password = it
-                errorMessage = null
+                localErrorMessage = null
             },
             placeholder = { Text("Mínimo 6 caracteres") },
             leadingIcon = {
@@ -377,7 +399,7 @@ fun RegistroScreen(
             value = passwordConfirm,
             onValueChange = {
                 passwordConfirm = it
-                errorMessage = null
+                localErrorMessage = null
             },
             placeholder = { Text("Repite tu contraseña") },
             leadingIcon = {
@@ -420,11 +442,12 @@ fun RegistroScreen(
             )
         }
 
-        // Mensaje de validación
-        if (errorMessage != null) {
+        // Mensaje de validación o error
+        val errorAMostrar = localErrorMessage ?: authState.errorMessage
+        if (errorAMostrar != null) {
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = errorMessage!!,
+                text = errorAMostrar,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error,
                 textAlign = TextAlign.Center,
@@ -434,20 +457,34 @@ fun RegistroScreen(
 
         Spacer(modifier = Modifier.height(18.dp))
 
-        // Botón: Continuar / Registrarse
+        // Botón: Continuar / Registrarse con indicador de carga
         Button(
             onClick = {
                 focusManager.clearFocus()
                 if (nombreCompleto.isBlank() || email.isBlank() || telefono.isBlank() || password.isBlank()) {
-                    errorMessage = "Por favor completa los campos obligatorios"
+                    localErrorMessage = "Por favor completa los campos obligatorios"
                 } else if (password != passwordConfirm) {
-                    errorMessage = "Las contraseñas no coinciden"
+                    localErrorMessage = "Las contraseñas no coinciden"
+                } else if (password.length < 6) {
+                    localErrorMessage = "La contraseña debe tener al menos 6 caracteres"
                 } else if (!aceptaTerminos) {
-                    errorMessage = "Debes aceptar los Términos de Servicio"
+                    localErrorMessage = "Debes aceptar los Términos de Servicio"
                 } else {
-                    onNavigateToVerification(email)
+                    val nombreFinal = if (tipoUsuario == "staff_tienda" && nombreTienda.isNotBlank()) {
+                        "$nombreCompleto ($nombreTienda)"
+                    } else {
+                        nombreCompleto
+                    }
+                    viewModel.signUp(
+                        email = email,
+                        pass = password,
+                        nombre = nombreFinal,
+                        tipoUsuario = tipoUsuario,
+                        telefono = telefono
+                    )
                 }
             },
+            enabled = !authState.isLoading,
             shape = RoundedCornerShape(14.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.primary
@@ -456,11 +493,19 @@ fun RegistroScreen(
                 .fillMaxWidth()
                 .height(52.dp)
         ) {
-            Text(
-                text = "Crear Cuenta",
-                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.onPrimary
-            )
+            if (authState.isLoading) {
+                CircularProgressIndicator(
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.size(24.dp),
+                    strokeWidth = 2.dp
+                )
+            } else {
+                Text(
+                    text = "Crear Cuenta",
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onPrimary
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(16.dp))

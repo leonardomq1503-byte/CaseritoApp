@@ -3,6 +3,7 @@ package com.example.caseritoapp
 import android.app.Application
 import com.example.caseritoapp.data.local.CaseritoDatabase
 import com.example.caseritoapp.data.repository.AuthRepository
+import com.example.caseritoapp.data.repository.FavoritoRepository
 import com.example.caseritoapp.data.repository.OfertaRepository
 import com.example.caseritoapp.data.repository.TiendaRepository
 
@@ -22,6 +23,10 @@ class CaseritoApplication : Application() {
 
     val authRepository: AuthRepository by lazy {
         AuthRepository(database.usuarioDao())
+    }
+
+    val favoritoRepository: FavoritoRepository by lazy {
+        FavoritoRepository(database.favoritoDao(), database.usuarioDao())
     }
 
     override fun onCreate() {

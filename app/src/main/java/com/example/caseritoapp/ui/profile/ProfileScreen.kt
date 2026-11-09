@@ -34,18 +34,32 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.caseritoapp.CaseritoApplication
+import com.example.caseritoapp.ui.viewmodel.CaseritoViewModelFactory
+import com.example.caseritoapp.ui.viewmodel.ProfileViewModel
 
 @Composable
 fun ProfileScreen(
     onNavigateToLogin: () -> Unit = {},
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    viewModel: ProfileViewModel = viewModel(
+        factory = CaseritoViewModelFactory(
+            LocalContext.current.applicationContext as CaseritoApplication
+        )
+    )
 ) {
+    val profileState by viewModel.uiState.collectAsStateWithLifecycle()
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -92,12 +106,12 @@ fun ProfileScreen(
 
                 Column {
                     Text(
-                        text = "Juan Pérez",
+                        text = profileState.nombre,
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "juan.perez@ejemplo.com",
+                        text = profileState.email,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -109,7 +123,7 @@ fun ProfileScreen(
                             .padding(horizontal = 8.dp, vertical = 2.dp)
                     ) {
                         Text(
-                            text = "Cliente Caserito",
+                            text = profileState.rolBadge,
                             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
                             color = MaterialTheme.colorScheme.primary
                         )
@@ -140,14 +154,14 @@ fun ProfileScreen(
                 PerfilOpcionFila(
                     icono = Icons.Outlined.BookmarkBorder,
                     titulo = "Mis Reservas",
-                    subtitulo = "1 reserva activa por retirar",
+                    subtitulo = if (profileState.totalReservasActivas > 0) "${profileState.totalReservasActivas} reserva(s) activa(s)" else "Sin reservas pendientes",
                     onClick = {}
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f))
                 PerfilOpcionFila(
                     icono = Icons.Outlined.FavoriteBorder,
                     titulo = "Mis Favoritos",
-                    subtitulo = "Tiendas y productos guardados",
+                    subtitulo = "${profileState.totalFavoritos} elemento(s) guardado(s)",
                     onClick = {}
                 )
             }
@@ -174,7 +188,7 @@ fun ProfileScreen(
             PerfilOpcionFila(
                 icono = Icons.Outlined.Storefront,
                 titulo = "Panel de mi Tienda",
-                subtitulo = "Publicar ofertas y administrar sucursales",
+                subtitulo = if (profileState.tipoUsuario == "staff_tienda") "Administrar ofertas y sucursales" else "Registrar comercio para publicar ofertas",
                 onClick = {}
             )
         }
@@ -216,7 +230,11 @@ fun ProfileScreen(
                     icono = Icons.AutoMirrored.Outlined.ExitToApp,
                     titulo = "Cerrar Sesión",
                     colorTitulo = MaterialTheme.colorScheme.error,
-                    onClick = onNavigateToLogin
+                    onClick = {
+                        viewModel.cerrarSesion {
+                            onNavigateToLogin()
+                        }
+                    }
                 )
             }
         }
