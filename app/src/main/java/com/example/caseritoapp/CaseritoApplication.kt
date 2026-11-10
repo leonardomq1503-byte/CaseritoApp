@@ -4,6 +4,7 @@ import android.app.Application
 import com.example.caseritoapp.data.local.CaseritoDatabase
 import com.example.caseritoapp.data.repository.AuthRepository
 import com.example.caseritoapp.data.repository.FavoritoRepository
+import com.example.caseritoapp.data.repository.NotificacionRepository
 import com.example.caseritoapp.data.repository.OfertaRepository
 import com.example.caseritoapp.data.repository.TiendaRepository
 
@@ -27,6 +28,10 @@ class CaseritoApplication : Application() {
 
     val favoritoRepository: FavoritoRepository by lazy {
         FavoritoRepository(database.favoritoDao(), database.usuarioDao())
+    }
+
+    val notificacionRepository: NotificacionRepository by lazy {
+        NotificacionRepository(database.notificacionDao(), database.usuarioDao())
     }
 
     override fun onCreate() {

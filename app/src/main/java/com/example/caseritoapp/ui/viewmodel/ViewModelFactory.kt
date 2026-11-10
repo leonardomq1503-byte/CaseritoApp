@@ -37,6 +37,17 @@ class CaseritoViewModelFactory(
                     usuarioDao = application.database.usuarioDao()
                 ) as T
             }
+            modelClass.isAssignableFrom(AlertsViewModel::class.java) -> {
+                AlertsViewModel(
+                    notificacionRepository = application.notificacionRepository,
+                    favoritoRepository = application.favoritoRepository
+                ) as T
+            }
+            modelClass.isAssignableFrom(MapViewModel::class.java) -> {
+                MapViewModel(
+                    tiendaRepository = application.tiendaRepository
+                ) as T
+            }
             else -> throw IllegalArgumentException("ViewModel class desconocida: ${modelClass.name}")
         }
     }
