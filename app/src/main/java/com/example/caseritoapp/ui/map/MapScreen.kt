@@ -3,14 +3,10 @@ package com.example.caseritoapp.ui.map
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -19,14 +15,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Directions
 import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.MyLocation
 import androidx.compose.material.icons.outlined.Storefront
 import androidx.compose.material3.Button
@@ -38,11 +30,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -54,7 +47,17 @@ import com.example.caseritoapp.ui.components.CategoriaChip
 import com.example.caseritoapp.ui.components.TiendaCard
 import com.example.caseritoapp.ui.viewmodel.CaseritoViewModelFactory
 import com.example.caseritoapp.ui.viewmodel.MapViewModel
-import com.example.caseritoapp.ui.viewmodel.TiendaConUbicacion
+import com.google.android.gms.maps.CameraUpdateFactory
+import com.google.android.gms.maps.model.CameraPosition
+import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.MapStyleOptions
+import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.MapProperties
+import com.google.maps.android.compose.MapUiSettings
+import com.google.maps.android.compose.MarkerComposable
+import com.google.maps.android.compose.MarkerState
+import com.google.maps.android.compose.rememberCameraPositionState
+import kotlinx.coroutines.launch
 
 @Composable
 fun MapScreen(
@@ -67,137 +70,114 @@ fun MapScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val radios = listOf(1, 2, 5)
+
+    // Coordenada inicial: Miraflores, Lima (Parque Kennedy)
+    val mirafloresCenter = remember { LatLng(-12.1217, -77.0298) }
+
+    val cameraPositionState = rememberCameraPositionState {
+        position = CameraPosition.fromLatLngZoom(mirafloresCenter, 14.5f)
+    }
+
+    val uiSettings = remember {
+        MapUiSettings(
+            zoomControlsEnabled = false,
+            myLocationButtonEnabled = false,
+            compassEnabled = true,
+            rotationGesturesEnabled = true,
+            scrollGesturesEnabled = true,
+            tiltGesturesEnabled = true,
+            zoomGesturesEnabled = true
+        )
+    }
+
+    // Estilo Clean Caserito aplicado al mapa
+    val mapProperties = remember {
+        MapProperties(
+            isMyLocationEnabled = false,
+            mapStyleOptions = MapStyleOptions(CaseritoMapStyle.JSON_STYLE)
+        )
+    }
+
+    // Centrado animado al seleccionar una tienda
+    LaunchedEffect(uiState.tiendaSeleccionada) {
+        uiState.tiendaSeleccionada?.let { tiendaConUbi ->
+            val lat = tiendaConUbi.ubicacion.latitud ?: -12.1217
+            val lng = tiendaConUbi.ubicacion.longitud ?: -77.0298
+            cameraPositionState.animate(
+                update = CameraUpdateFactory.newLatLngZoom(LatLng(lat, lng), 16f),
+                durationMs = 800
+            )
+        }
+    }
 
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        // Lienzo interactivo del mapa con cuadrícula urbana y radio de cobertura
-        val gridColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
-        val radarColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
-        val roadColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)
-
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val canvasWidth = size.width
-            val canvasHeight = size.height
-
-            // Círculos concéntricos de rango de búsqueda
-            drawCircle(
-                color = radarColor,
-                radius = canvasWidth * 0.45f,
-                center = Offset(canvasWidth * 0.5f, canvasHeight * 0.45f)
-            )
-            drawCircle(
-                color = radarColor.copy(alpha = 0.05f),
-                radius = canvasWidth * 0.70f,
-                center = Offset(canvasWidth * 0.5f, canvasHeight * 0.45f)
-            )
-
-            // Vías principales estilizadas (Av. Larco, Benavides, Diagonal)
-            drawLine(
-                color = roadColor,
-                start = Offset(0f, canvasHeight * 0.35f),
-                end = Offset(canvasWidth, canvasHeight * 0.55f),
-                strokeWidth = 6f
-            )
-            drawLine(
-                color = roadColor,
-                start = Offset(canvasWidth * 0.30f, 0f),
-                end = Offset(canvasWidth * 0.65f, canvasHeight),
-                strokeWidth = 8f
-            )
-            drawLine(
-                color = roadColor,
-                start = Offset(canvasWidth * 0.85f, 0f),
-                end = Offset(canvasWidth * 0.15f, canvasHeight),
-                strokeWidth = 5f
-            )
-
-            // Marcador de "Mi ubicación" en el centro
-            drawCircle(
-                color = Color(0xFF178B63),
-                radius = 18f,
-                center = Offset(canvasWidth * 0.5f, canvasHeight * 0.45f)
-            )
-            drawCircle(
-                color = Color.White,
-                radius = 8f,
-                center = Offset(canvasWidth * 0.5f, canvasHeight * 0.45f)
-            )
-        }
-
-        // Pines interactivos de tiendas sobre el mapa
-        Box(modifier = Modifier.fillMaxSize()) {
-            uiState.tiendasConUbicacion.forEachIndexed { index, item ->
+        // Google Maps con diseño minimalista Caserito
+        GoogleMap(
+            modifier = Modifier.fillMaxSize(),
+            cameraPositionState = cameraPositionState,
+            properties = mapProperties,
+            uiSettings = uiSettings
+        ) {
+            // Marcadores personalizados con la paleta y logo de Caserito
+            uiState.tiendasConUbicacion.forEach { item ->
+                val lat = item.ubicacion.latitud ?: -12.1217
+                val lng = item.ubicacion.longitud ?: -77.0298
                 val esSeleccionada = uiState.tiendaSeleccionada?.tienda?.id == item.tienda.id
 
-                // Posicionamiento visual aproximado de sucursales en Lima
-                val offsetX = when (index) {
-                    0 -> 0.35f // TecnoStore (Larco)
-                    1 -> 0.62f // Moda & Estilo (Cantuarias)
-                    2 -> 0.48f // Bazar Don Pepe (Benavides)
-                    else -> 0.70f
-                }
-                val offsetY = when (index) {
-                    0 -> 0.32f
-                    1 -> 0.42f
-                    2 -> 0.58f
-                    else -> 0.25f
-                }
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(bottom = 120.dp)
+                MarkerComposable(
+                    state = MarkerState(position = LatLng(lat, lng)),
+                    title = item.tienda.nombreComercial,
+                    onClick = {
+                        viewModel.seleccionarTienda(item)
+                        true
+                    }
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.TopStart)
-                            .padding(
-                                start = (LocalContext.current.resources.displayMetrics.widthPixels * offsetX / LocalContext.current.resources.displayMetrics.density).dp,
-                                top = (LocalContext.current.resources.displayMetrics.heightPixels * offsetY / LocalContext.current.resources.displayMetrics.density).dp
-                            )
-                            .clickable { viewModel.seleccionarTienda(item) }
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.padding(4.dp)
                     ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(20.dp))
-                                    .background(
-                                        if (esSeleccionada) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface
-                                    )
-                                    .border(
-                                        width = 2.dp,
-                                        color = if (esSeleccionada) Color.White else MaterialTheme.colorScheme.primary,
-                                        shape = RoundedCornerShape(20.dp)
-                                    )
-                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                        Card(
+                            shape = RoundedCornerShape(20.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (esSeleccionada) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface
+                            ),
+                            border = CardDefaults.outlinedCardBorder().copy(
+                                brush = androidx.compose.ui.graphics.SolidColor(
+                                    if (esSeleccionada) Color.White else MaterialTheme.colorScheme.primary
+                                )
+                            ),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        imageVector = Icons.Outlined.Storefront,
-                                        contentDescription = null,
-                                        tint = if (esSeleccionada) Color.White else MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(14.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(
-                                        text = item.tienda.nombreComercial,
-                                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                        color = if (esSeleccionada) Color.White else MaterialTheme.colorScheme.onSurface
-                                    )
-                                }
+                                Icon(
+                                    imageVector = Icons.Outlined.Storefront,
+                                    contentDescription = null,
+                                    tint = if (esSeleccionada) Color.White else MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(15.dp)
+                                )
+                                Spacer(modifier = Modifier.width(5.dp))
+                                Text(
+                                    text = item.tienda.nombreComercial,
+                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                    color = if (esSeleccionada) Color.White else MaterialTheme.colorScheme.onSurface
+                                )
                             }
-
-                            Icon(
-                                imageVector = Icons.Filled.LocationOn,
-                                contentDescription = null,
-                                tint = if (esSeleccionada) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
-                                modifier = Modifier.size(if (esSeleccionada) 32.dp else 24.dp)
-                            )
                         }
+                        Icon(
+                            imageVector = Icons.Filled.LocationOn,
+                            contentDescription = null,
+                            tint = if (esSeleccionada) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary.copy(alpha = 0.85f),
+                            modifier = Modifier.size(if (esSeleccionada) 32.dp else 26.dp)
+                        )
                     }
                 }
             }
@@ -227,12 +207,12 @@ fun MapScreen(
                         Spacer(modifier = Modifier.width(8.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "Zona Comercial Activa",
+                                text = "Comercios Caserito",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
-                                text = "Miraflores, Lima (${uiState.tiendasConUbicacion.size} tiendas cercanas)",
+                                text = "Miraflores, Lima (${uiState.tiendasConUbicacion.size} tiendas activas)",
                                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                                 color = MaterialTheme.colorScheme.onSurface
                             )
@@ -262,26 +242,29 @@ fun MapScreen(
             }
         }
 
-        // Botón flotante para centrar o navegar
+        // Botón flotante para re-centrar la vista en Miraflores
         FloatingActionButton(
             onClick = {
-                uiState.tiendaSeleccionada?.let {
-                    viewModel.abrirEnGoogleMaps(context, it)
+                scope.launch {
+                    cameraPositionState.animate(
+                        update = CameraUpdateFactory.newLatLngZoom(mirafloresCenter, 15f),
+                        durationMs = 700
+                    )
                 }
             },
-            containerColor = MaterialTheme.colorScheme.primary,
-            contentColor = Color.White,
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.primary,
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(end = 16.dp, bottom = 180.dp)
+                .padding(end = 16.dp, bottom = 220.dp)
         ) {
             Icon(
-                imageVector = Icons.Filled.Directions,
-                contentDescription = "Ruta en Google Maps"
+                imageVector = Icons.Outlined.MyLocation,
+                contentDescription = "Centrar en mi zona"
             )
         }
 
-        // Tarjeta inferior de la tienda seleccionada con botón de navegación
+        // Tarjeta inferior de la tienda seleccionada con botón de navegación GPS
         AnimatedVisibility(
             visible = uiState.tiendaSeleccionada != null,
             enter = fadeIn(),
