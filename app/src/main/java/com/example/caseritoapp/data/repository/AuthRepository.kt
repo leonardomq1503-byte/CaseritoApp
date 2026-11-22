@@ -10,17 +10,58 @@ import io.github.jan.supabase.auth.status.SessionStatus
 import io.github.jan.supabase.auth.user.UserInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class AuthRepository(
     private val usuarioDao: UsuarioDao,
     private val supabase: SupabaseClient = SupabaseClientProvider.client
 ) {
+    private val localUserSyncMutex = Mutex()
     val sessionStatus: Flow<SessionStatus> = supabase.auth.sessionStatus
+    val localUserId: Flow<Long?> = sessionStatus.map { getOrSyncCurrentLocalUserId() }
 
     fun getCurrentUserInfo(): UserInfo? = supabase.auth.currentUserOrNull()
+
+    suspend fun getOrSyncCurrentLocalUserId(): Long? = withContext(Dispatchers.IO) {
+        localUserSyncMutex.withLock {
+            val userInfo = supabase.auth.currentUserOrNull() ?: return@withLock null
+            val authUserId = userInfo.id
+            val existing = usuarioDao.getUsuarioPorAuthId(authUserId)
+                ?: userInfo.email?.let { usuarioDao.getUsuarioPorEmail(it) }
+            val metadata = userInfo.userMetadata
+            val now = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US).format(Date())
+            val usuario = UsuarioEntity(
+                id = existing?.id ?: 0L,
+                authUserId = authUserId,
+                tipoUsuario = metadata?.get("tipo_usuario")?.toString()?.replace("\"", "")
+                    ?: existing?.tipoUsuario ?: "cliente",
+                nombre = metadata?.get("nombre")?.toString()?.replace("\"", "")
+                    ?: existing?.nombre ?: "Usuario",
+                email = userInfo.email ?: existing?.email,
+                telefono = userInfo.phone ?: existing?.telefono,
+                passwordHash = "",
+                ciudadPreferida = existing?.ciudadPreferida,
+                estado = existing?.estado ?: "activo",
+                fechaRegistro = userInfo.createdAt?.toString() ?: existing?.fechaRegistro.orEmpty(),
+                ultimoLogin = now
+            )
+
+            if (existing == null) {
+                usuarioDao.insertUsuario(usuario)
+            } else {
+                usuarioDao.updateUsuario(usuario)
+                existing.id
+            }
+        }
+    }
 
     suspend fun signIn(email: String, pass: String): Result<Unit> = withContext(Dispatchers.IO) {
         try {
@@ -28,20 +69,7 @@ class AuthRepository(
                 this.email = email
                 this.password = pass
             }
-            // Guardar usuario en Room para acceso offline
-            val userInfo = supabase.auth.currentUserOrNull()
-            if (userInfo != null) {
-                usuarioDao.insertUsuario(
-                    UsuarioEntity(
-                        tipoUsuario = userInfo.userMetadata?.get("tipo_usuario")?.toString()?.replace("\"", "") ?: "cliente",
-                        nombre = userInfo.userMetadata?.get("nombre")?.toString()?.replace("\"", "") ?: "Usuario",
-                        email = userInfo.email,
-                        telefono = userInfo.phone,
-                        passwordHash = "",
-                        fechaRegistro = userInfo.createdAt?.toString() ?: ""
-                    )
-                )
-            }
+            getOrSyncCurrentLocalUserId()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)

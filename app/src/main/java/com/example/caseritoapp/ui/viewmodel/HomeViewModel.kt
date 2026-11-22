@@ -6,6 +6,7 @@ import com.example.caseritoapp.data.local.dao.OfertaConDetalle
 import com.example.caseritoapp.data.local.entity.CategoriaEntity
 import com.example.caseritoapp.data.local.entity.TiendaEntity
 import com.example.caseritoapp.data.repository.FavoritoRepository
+import com.example.caseritoapp.data.repository.AuthRepository
 import com.example.caseritoapp.data.repository.OfertaRepository
 import com.example.caseritoapp.data.repository.TiendaRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -13,7 +14,11 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 
 data class HomeUiState(
@@ -31,15 +36,16 @@ private data class SyncStatus(
     val error: String? = null
 )
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class HomeViewModel(
     private val ofertaRepository: OfertaRepository,
     private val tiendaRepository: TiendaRepository,
-    private val favoritoRepository: FavoritoRepository
+    private val favoritoRepository: FavoritoRepository,
+    private val authRepository: AuthRepository
 ) : ViewModel() {
 
     private val _categoriaSeleccionada = MutableStateFlow("Todas")
     private val _syncStatus = MutableStateFlow(SyncStatus(isSyncing = false))
-    private var userId: Long = 1L
 
     val uiState: StateFlow<HomeUiState> = combine(
         ofertaRepository.categorias,
@@ -70,11 +76,16 @@ class HomeViewModel(
 
     private val _idsFavoritos = MutableStateFlow<Set<Long>>(emptySet())
     val idsFavoritos: StateFlow<Set<Long>> = _idsFavoritos.asStateFlow()
+    val isAuthenticated: StateFlow<Boolean> = authRepository.localUserId
+        .map { it != null }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     init {
         viewModelScope.launch {
-            userId = favoritoRepository.getOrCreateDefaultUserId()
-            favoritoRepository.getIdsFavoritos(userId, "oferta").collect { ids ->
+            authRepository.localUserId.flatMapLatest { userId ->
+                userId?.let { favoritoRepository.getIdsFavoritos(it, "oferta") }
+                    ?: flowOf(emptyList())
+            }.collect { ids ->
                 _idsFavoritos.value = ids.toSet()
             }
         }
@@ -87,6 +98,7 @@ class HomeViewModel(
 
     fun toggleFavorito(idOferta: Long) {
         viewModelScope.launch {
+            val userId = authRepository.getOrSyncCurrentLocalUserId() ?: return@launch
             favoritoRepository.toggleFavorito(userId, "oferta", idOferta)
         }
     }

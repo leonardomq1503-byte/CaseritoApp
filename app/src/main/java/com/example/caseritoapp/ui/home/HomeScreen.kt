@@ -55,6 +55,7 @@ fun HomeScreen(
     onNavigateToSearch: () -> Unit = {},
     onNavigateToMap: () -> Unit = {},
     onNavigateToAlerts: () -> Unit = {},
+    onNavigateToLogin: () -> Unit = {},
     viewModel: HomeViewModel = viewModel(
         factory = CaseritoViewModelFactory(
             LocalContext.current.applicationContext as CaseritoApplication
@@ -63,6 +64,7 @@ fun HomeScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val idsFavoritos by viewModel.idsFavoritos.collectAsStateWithLifecycle()
+    val isAuthenticated by viewModel.isAuthenticated.collectAsStateWithLifecycle()
     var searchQuery by remember { mutableStateOf("") }
 
     // Lista dinámica de nombres de categorías (comienza con "Todas")
@@ -238,7 +240,10 @@ fun HomeScreen(
                             precioOferta = oferta.precioOferta,
                             porcentajeDescuento = porcentajeDesc,
                             esFavorito = esFav,
-                            onFavoritoClick = { viewModel.toggleFavorito(oferta.id) },
+                            onFavoritoClick = {
+                                if (isAuthenticated) viewModel.toggleFavorito(oferta.id)
+                                else onNavigateToLogin()
+                            },
                             stockRestante = oferta.stockDisponible,
                             onClick = {}
                         )

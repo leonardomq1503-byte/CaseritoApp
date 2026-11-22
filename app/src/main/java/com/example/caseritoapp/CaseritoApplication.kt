@@ -27,11 +27,11 @@ class CaseritoApplication : Application() {
     }
 
     val favoritoRepository: FavoritoRepository by lazy {
-        FavoritoRepository(database.favoritoDao(), database.usuarioDao())
+        FavoritoRepository(database.favoritoDao())
     }
 
     val notificacionRepository: NotificacionRepository by lazy {
-        NotificacionRepository(database.notificacionDao(), database.usuarioDao())
+        NotificacionRepository(database.notificacionDao())
     }
 
     override fun onCreate() {

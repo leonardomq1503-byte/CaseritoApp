@@ -12,7 +12,8 @@ import androidx.room.PrimaryKey
     tableName = "usuarios",
     indices = [
         Index(value = ["email"], unique = true),
-        Index(value = ["telefono"], unique = true)
+        Index(value = ["telefono"], unique = true),
+        Index(value = ["auth_user_id"], unique = true)
     ]
 )
 data class UsuarioEntity(
@@ -25,6 +26,9 @@ data class UsuarioEntity(
     val nombre: String,
 
     val email: String? = null,
+
+    @ColumnInfo(name = "auth_user_id")
+    val authUserId: String? = null,
 
     val telefono: String? = null,
 

@@ -14,6 +14,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.caseritoapp.navigation.AppNavigation
@@ -36,13 +39,18 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
+@OptIn(ExperimentalCoroutinesApi::class)
 fun CaseritoMainApp() {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
     val application = LocalContext.current.applicationContext as CaseritoApplication
-    val alertasNoLeidas by application.notificacionRepository.getCantidadNoLeidas(1L)
+    val alertasNoLeidas by application.authRepository.localUserId
+        .flatMapLatest { userId ->
+            userId?.let { application.notificacionRepository.getCantidadNoLeidas(it) }
+                ?: flowOf(0)
+        }
         .collectAsStateWithLifecycle(initialValue = 0)
 
     // Ocultar barra inferior cuando estamos en pantallas de autenticación o flujos modales

@@ -41,7 +41,8 @@ fun AppNavigation(
             HomeScreen(
                 onNavigateToSearch = { navController.navigate(Screen.Search.route) },
                 onNavigateToMap = { navController.navigate(Screen.Map.route) },
-                onNavigateToAlerts = { navController.navigate(Screen.Alerts.route) }
+                onNavigateToAlerts = { navController.navigate(Screen.Alerts.route) },
+                onNavigateToLogin = { navController.navigate(Screen.Login.route) }
             )
         }
 

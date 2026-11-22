@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.example.caseritoapp.data.local.dao.FavoritoDao
 import com.example.caseritoapp.data.local.dao.NotificacionDao
 import com.example.caseritoapp.data.local.dao.OfertaDao
@@ -48,7 +50,7 @@ import com.example.caseritoapp.data.local.entity.VerificacionEntity
         MetricaProductoEntity::class,
         HistorialOfertaEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class CaseritoDatabase : RoomDatabase() {
@@ -61,6 +63,15 @@ abstract class CaseritoDatabase : RoomDatabase() {
     abstract fun reservaDao(): ReservaDao
 
     companion object {
+        private val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE usuarios ADD COLUMN auth_user_id TEXT")
+                database.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS index_usuarios_auth_user_id ON usuarios(auth_user_id)"
+                )
+            }
+        }
+
         @Volatile
         private var INSTANCE: CaseritoDatabase? = null
 
@@ -71,6 +82,7 @@ abstract class CaseritoDatabase : RoomDatabase() {
                     CaseritoDatabase::class.java,
                     "caserito_database"
                 )
+                    .addMigrations(MIGRATION_1_2)
                     .fallbackToDestructiveMigration(dropAllTables = true)
                     .build()
                 INSTANCE = instance

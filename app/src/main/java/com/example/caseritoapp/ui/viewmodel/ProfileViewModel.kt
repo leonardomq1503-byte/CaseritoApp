@@ -11,12 +11,15 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 
 data class ProfileUiState(
-    val nombre: String = "Caserito Invitado",
-    val email: String = "invitado@caserito.pe",
+    val nombre: String = "Inicia sesión",
+    val email: String = "",
     val tipoUsuario: String = "cliente",
     val rolBadge: String = "Cliente Caserito",
     val totalFavoritos: Int = 0,
@@ -24,6 +27,7 @@ data class ProfileUiState(
     val estaAutenticado: Boolean = false
 )
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class ProfileViewModel(
     private val authRepository: AuthRepository,
     private val favoritoRepository: FavoritoRepository,
@@ -40,34 +44,30 @@ class ProfileViewModel(
 
     fun cargarPerfil() {
         viewModelScope.launch {
-            val userInfo = authRepository.getCurrentUserInfo()
-            val userId = favoritoRepository.getOrCreateDefaultUserId()
+            authRepository.localUserId.flatMapLatest { userId ->
+                if (userId == null) {
+                    flowOf(ProfileUiState())
+                } else {
+                    combine(
+                        favoritoRepository.contarFavoritos(userId),
+                        reservaDao.contarReservasActivas(userId),
+                        usuarioDao.getUsuarioPorId(userId)
+                    ) { favoritosCount, reservasCount, usuarioLocal ->
+                        val userInfo = authRepository.getCurrentUserInfo()
+                        val tipo = usuarioLocal?.tipoUsuario ?: "cliente"
+                        val badge = if (tipo == "staff_tienda") "Comercio Caserito" else "Cliente Caserito"
 
-            combine(
-                favoritoRepository.contarFavoritos(userId),
-                reservaDao.contarReservasActivas(userId),
-                usuarioDao.getUsuarioPorId(userId)
-            ) { favoritosCount, reservasCount, usuarioLocal ->
-                val nombre = userInfo?.userMetadata?.get("nombre")?.toString()?.replace("\"", "")
-                    ?: usuarioLocal?.nombre
-                    ?: "Usuario Caserito"
-
-                val email = userInfo?.email ?: usuarioLocal?.email ?: "usuario@caserito.pe"
-                val tipo = userInfo?.userMetadata?.get("tipo_usuario")?.toString()?.replace("\"", "")
-                    ?: usuarioLocal?.tipoUsuario
-                    ?: "cliente"
-
-                val badge = if (tipo == "staff_tienda") "Comercio Caserito" else "Cliente Caserito"
-
-                ProfileUiState(
-                    nombre = nombre,
-                    email = email,
-                    tipoUsuario = tipo,
-                    rolBadge = badge,
-                    totalFavoritos = favoritosCount,
-                    totalReservasActivas = reservasCount,
-                    estaAutenticado = userInfo != null
-                )
+                        ProfileUiState(
+                            nombre = usuarioLocal?.nombre ?: "Usuario Caserito",
+                            email = usuarioLocal?.email.orEmpty(),
+                            tipoUsuario = tipo,
+                            rolBadge = badge,
+                            totalFavoritos = favoritosCount,
+                            totalReservasActivas = reservasCount,
+                            estaAutenticado = userInfo != null
+                        )
+                    }
+                }
             }.collect { state ->
                 _uiState.value = state
             }

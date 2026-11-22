@@ -18,6 +18,9 @@ interface UsuarioDao {
     @Query("SELECT * FROM usuarios WHERE email = :email LIMIT 1")
     suspend fun getUsuarioPorEmail(email: String): UsuarioEntity?
 
+    @Query("SELECT * FROM usuarios WHERE auth_user_id = :authUserId LIMIT 1")
+    suspend fun getUsuarioPorAuthId(authUserId: String): UsuarioEntity?
+
     @Query("SELECT * FROM usuarios WHERE telefono = :telefono LIMIT 1")
     suspend fun getUsuarioPorTelefono(telefono: String): UsuarioEntity?
 

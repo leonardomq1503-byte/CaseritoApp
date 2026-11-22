@@ -1,19 +1,16 @@
 package com.example.caseritoapp.data.repository
 
 import com.example.caseritoapp.data.local.dao.NotificacionDao
-import com.example.caseritoapp.data.local.dao.UsuarioDao
 import com.example.caseritoapp.data.local.entity.NotificacionEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
 class NotificacionRepository(
-    private val notificacionDao: NotificacionDao,
-    private val usuarioDao: UsuarioDao
+    private val notificacionDao: NotificacionDao
 ) {
 
     fun getNotificacionesPorUsuario(idUsuario: Long): Flow<List<NotificacionEntity>> {
@@ -53,45 +50,5 @@ class NotificacionRepository(
                 fechaCreacion = fechaActual
             )
         )
-    }
-
-    suspend fun inicializarNotificacionesSiVacio(idUsuario: Long) = withContext(Dispatchers.IO) {
-        val existentes = notificacionDao.getNotificacionesPorUsuario(idUsuario).firstOrNull()
-        if (existentes.isNullOrEmpty()) {
-            val fechaActual = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()).format(Date())
-            val semillas = listOf(
-                NotificacionEntity(
-                    idUsuario = idUsuario,
-                    tipo = "nueva_oferta_tienda",
-                    titulo = "¡Nueva oferta en TecnoStore!",
-                    mensaje = "Audífonos Bluetooth Pro con 44% de descuento hasta el fin de semana.",
-                    idObjeto = 1L,
-                    tipoObjeto = "producto",
-                    leida = false,
-                    fechaCreacion = fechaActual
-                ),
-                NotificacionEntity(
-                    idUsuario = idUsuario,
-                    tipo = "estado_reserva",
-                    titulo = "Reserva lista para retiro",
-                    mensaje = "Tu reserva en Moda & Estilo está confirmada. Tienes 48h para retirarla en tienda.",
-                    idObjeto = 2L,
-                    tipoObjeto = "tienda",
-                    leida = false,
-                    fechaCreacion = fechaActual
-                ),
-                NotificacionEntity(
-                    idUsuario = idUsuario,
-                    tipo = "cercania",
-                    titulo = "Tienda favorita cerca de ti",
-                    mensaje = "Estás a menos de 500m de Bazar Don Pepe con promociones vigentes en hogar.",
-                    idObjeto = 3L,
-                    tipoObjeto = "tienda",
-                    leida = true,
-                    fechaCreacion = fechaActual
-                )
-            )
-            notificacionDao.insertNotificaciones(semillas)
-        }
     }
 }

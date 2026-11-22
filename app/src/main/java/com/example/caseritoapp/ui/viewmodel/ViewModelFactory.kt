@@ -15,7 +15,8 @@ class CaseritoViewModelFactory(
                 HomeViewModel(
                     ofertaRepository = application.ofertaRepository,
                     tiendaRepository = application.tiendaRepository,
-                    favoritoRepository = application.favoritoRepository
+                    favoritoRepository = application.favoritoRepository,
+                    authRepository = application.authRepository
                 ) as T
             }
             modelClass.isAssignableFrom(SearchViewModel::class.java) -> {
@@ -40,7 +41,7 @@ class CaseritoViewModelFactory(
             modelClass.isAssignableFrom(AlertsViewModel::class.java) -> {
                 AlertsViewModel(
                     notificacionRepository = application.notificacionRepository,
-                    favoritoRepository = application.favoritoRepository
+                    authRepository = application.authRepository
                 ) as T
             }
             modelClass.isAssignableFrom(MapViewModel::class.java) -> {
