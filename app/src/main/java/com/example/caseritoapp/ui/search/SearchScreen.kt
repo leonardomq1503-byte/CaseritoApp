@@ -144,6 +144,7 @@ fun SearchScreen(
                                 porcentajeDescuento = porcentajeDesc,
                                 esFavorito = false,
                                 onFavoritoClick = {},
+                                mostrarReservar = false,
                                 stockRestante = oferta.stockDisponible,
                                 onClick = {}
                             )
@@ -167,9 +168,8 @@ fun SearchScreen(
                     TiendaCard(
                         nombre = tienda.nombreComercial,
                         categoria = tienda.categoriaPrincipal ?: "Comercio Local",
-                        direccion = tienda.razonSocial ?: "Lima, Perú",
-                        distanciaAprox = "Cerca de tu zona",
-                        cantidadOfertasActivas = 3,
+                        direccion = tienda.razonSocial ?: "Arequipa, Perú",
+                        distanciaAprox = "Ubicación en el mapa",
                         onClick = {}
                     )
                 }

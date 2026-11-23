@@ -11,7 +11,7 @@ data class UbicacionDto(
     @SerialName("nombre_sucursal")
     val nombreSucursal: String,
     val direccion: String,
-    val ciudad: String = "Lima",
+    val ciudad: String = "Arequipa",
     val pais: String = "Perú",
     val latitud: Double? = null,
     val longitud: Double? = null,

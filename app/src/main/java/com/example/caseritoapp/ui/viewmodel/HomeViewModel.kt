@@ -9,6 +9,7 @@ import com.example.caseritoapp.data.repository.FavoritoRepository
 import com.example.caseritoapp.data.repository.AuthRepository
 import com.example.caseritoapp.data.repository.OfertaRepository
 import com.example.caseritoapp.data.repository.TiendaRepository
+import com.example.caseritoapp.data.repository.ReservaRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -41,7 +42,8 @@ class HomeViewModel(
     private val ofertaRepository: OfertaRepository,
     private val tiendaRepository: TiendaRepository,
     private val favoritoRepository: FavoritoRepository,
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val reservaRepository: ReservaRepository
 ) : ViewModel() {
 
     private val _categoriaSeleccionada = MutableStateFlow("Todas")
@@ -76,6 +78,10 @@ class HomeViewModel(
 
     private val _idsFavoritos = MutableStateFlow<Set<Long>>(emptySet())
     val idsFavoritos: StateFlow<Set<Long>> = _idsFavoritos.asStateFlow()
+    private val _reservaEnCurso = MutableStateFlow<Long?>(null)
+    val reservaEnCurso: StateFlow<Long?> = _reservaEnCurso.asStateFlow()
+    private val _reservaFeedback = MutableStateFlow<String?>(null)
+    val reservaFeedback: StateFlow<String?> = _reservaFeedback.asStateFlow()
     val isAuthenticated: StateFlow<Boolean> = authRepository.localUserId
         .map { it != null }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
@@ -83,7 +89,7 @@ class HomeViewModel(
     init {
         viewModelScope.launch {
             authRepository.localUserId.flatMapLatest { userId ->
-                userId?.let { favoritoRepository.getIdsFavoritos(it, "oferta") }
+                userId?.let { favoritoRepository.getIdsFavoritos(it, "producto") }
                     ?: flowOf(emptyList())
             }.collect { ids ->
                 _idsFavoritos.value = ids.toSet()
@@ -98,9 +104,47 @@ class HomeViewModel(
 
     fun toggleFavorito(idOferta: Long) {
         viewModelScope.launch {
-            val userId = authRepository.getOrSyncCurrentLocalUserId() ?: return@launch
-            favoritoRepository.toggleFavorito(userId, "oferta", idOferta)
+            val identity = authRepository.getOrSyncCurrentIdentity() ?: return@launch
+            favoritoRepository.toggleFavorito(
+                identity.localUserId,
+                identity.authUserId,
+                "producto",
+                idOferta
+            )
         }
+    }
+
+    fun reservarOferta(idProducto: Long, idUbicacion: Long) {
+        if (_reservaEnCurso.value != null) return
+        viewModelScope.launch {
+            val identity = authRepository.getOrSyncCurrentIdentity()
+            if (identity == null) {
+                _reservaFeedback.value = "Inicia sesión para reservar esta oferta."
+                return@launch
+            }
+
+            _reservaEnCurso.value = idProducto
+            _reservaFeedback.value = null
+            try {
+                val reserva = reservaRepository.crearReserva(
+                    localUserId = identity.localUserId,
+                    idProducto = idProducto,
+                    idUbicacion = idUbicacion,
+                    cantidad = 1
+                )
+                _reservaFeedback.value =
+                    "Reserva confirmada. Quedan ${reserva.stockRestante} unidades disponibles."
+            } catch (error: Exception) {
+                _reservaFeedback.value = error.message?.takeIf { it.isNotBlank() }
+                    ?: "No se pudo completar la reserva. Intenta nuevamente."
+            } finally {
+                _reservaEnCurso.value = null
+            }
+        }
+    }
+
+    fun limpiarReservaFeedback() {
+        _reservaFeedback.value = null
     }
 
     fun sincronizarDatos() {

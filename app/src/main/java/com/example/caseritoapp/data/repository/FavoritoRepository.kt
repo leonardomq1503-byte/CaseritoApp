@@ -1,44 +1,79 @@
 package com.example.caseritoapp.data.repository
 
-import com.example.caseritoapp.data.local.dao.FavoritoDao
+import androidx.room.withTransaction
+import com.example.caseritoapp.data.local.CaseritoDatabase
 import com.example.caseritoapp.data.local.entity.FavoritoEntity
+import com.example.caseritoapp.data.local.entity.SyncOperationEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
+import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
 class FavoritoRepository(
-    private val favoritoDao: FavoritoDao
+    private val database: CaseritoDatabase,
+    private val scheduleSync: (String) -> Unit
 ) {
-    fun getFavoritosPorUsuario(idUsuario: Long): Flow<List<FavoritoEntity>> {
-        return favoritoDao.getFavoritosPorUsuario(idUsuario)
-    }
+    private val favoritoDao get() = database.favoritoDao()
 
-    fun getIdsFavoritos(idUsuario: Long, tipo: String): Flow<List<Long>> {
-        return favoritoDao.getIdsFavoritos(idUsuario, tipo)
-    }
+    fun getFavoritosPorUsuario(idUsuario: Long): Flow<List<FavoritoEntity>> =
+        favoritoDao.getFavoritosPorUsuario(idUsuario)
 
-    fun contarFavoritos(idUsuario: Long): Flow<Int> {
-        return favoritoDao.contarFavoritos(idUsuario)
-    }
+    fun getIdsFavoritos(idUsuario: Long, tipo: String): Flow<List<Long>> =
+        favoritoDao.getIdsFavoritos(idUsuario, normalizeType(tipo))
 
-    suspend fun toggleFavorito(idUsuario: Long, tipo: String, idObjeto: Long): Boolean = withContext(Dispatchers.IO) {
-        val existente = favoritoDao.getFavorito(idUsuario, tipo, idObjeto)
-        if (existente != null) {
-            favoritoDao.deleteFavorito(idUsuario, tipo, idObjeto)
-            false
-        } else {
-            val fechaActual = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()).format(Date())
-            favoritoDao.insertFavorito(
-                FavoritoEntity(
-                    idUsuario = idUsuario,
-                    tipo = tipo,
-                    idObjeto = idObjeto,
-                    fechaCreacion = fechaActual
+    fun contarFavoritos(idUsuario: Long): Flow<Int> = favoritoDao.contarFavoritos(idUsuario)
+
+    suspend fun toggleFavorito(
+        idUsuario: Long,
+        authUserId: String,
+        tipo: String,
+        idObjeto: Long
+    ): Boolean = withContext(Dispatchers.IO) {
+        val tipoLocal = normalizeType(tipo)
+        val now = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US).format(Date())
+
+        val agregado = database.withTransaction {
+            val existente = favoritoDao.getFavorito(idUsuario, tipoLocal, idObjeto)
+            if (existente != null) {
+                favoritoDao.deleteFavorito(idUsuario, tipoLocal, idObjeto)
+                database.syncOperationDao().insert(
+                    SyncOperationEntity(
+                        authUserId = authUserId,
+                        entity = "favorito",
+                        action = "delete",
+                        tipo = tipoLocal,
+                        idObjeto = idObjeto,
+                        fechaCreacion = now
+                    )
                 )
-            )
-            true
+                false
+            } else {
+                favoritoDao.insertFavorito(
+                    FavoritoEntity(
+                        idUsuario = idUsuario,
+                        tipo = tipoLocal,
+                        idObjeto = idObjeto,
+                        fechaCreacion = now
+                    )
+                )
+                database.syncOperationDao().insert(
+                    SyncOperationEntity(
+                        authUserId = authUserId,
+                        entity = "favorito",
+                        action = "upsert",
+                        tipo = tipoLocal,
+                        idObjeto = idObjeto,
+                        fechaCreacion = now
+                    )
+                )
+                true
+            }
         }
+        scheduleSync(authUserId)
+        agregado
     }
+
+    private fun normalizeType(type: String): String = if (type == "oferta") "producto" else type
 }

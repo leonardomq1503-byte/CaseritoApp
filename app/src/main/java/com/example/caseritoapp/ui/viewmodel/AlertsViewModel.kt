@@ -48,25 +48,23 @@ class AlertsViewModel(
 
     fun marcarComoLeida(id: Long) {
         viewModelScope.launch {
-            authRepository.getOrSyncCurrentLocalUserId()?.let {
-                notificacionRepository.marcarComoLeida(id, it)
-            }
+            val identity = authRepository.getOrSyncCurrentIdentity() ?: return@launch
+            notificacionRepository.marcarComoLeida(id, identity.localUserId, identity.authUserId)
         }
     }
 
     fun marcarTodasComoLeidas() {
         viewModelScope.launch {
-            authRepository.getOrSyncCurrentLocalUserId()?.let {
-                notificacionRepository.marcarTodasComoLeidas(it)
-            }
+            val identity = authRepository.getOrSyncCurrentIdentity() ?: return@launch
+            notificacionRepository.marcarTodasComoLeidas(identity.localUserId, identity.authUserId)
         }
     }
 
     fun enviarNotificacionPrueba(context: Context) {
         viewModelScope.launch {
             val userId = authRepository.getOrSyncCurrentLocalUserId() ?: return@launch
-            val titulo = "¡Oferta Flash en Miraflores! ⚡"
-            val mensaje = "50% de descuento en la segunda prenda en Moda & Estilo solo por hoy."
+            val titulo = "¡Oferta Flash en Arequipa! ⚡"
+            val mensaje = "50% de descuento en la segunda prenda en Moda & Estilo, Arequipa, solo por hoy."
 
             notificacionRepository.agregarNotificacion(
                 idUsuario = userId,

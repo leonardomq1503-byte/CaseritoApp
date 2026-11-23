@@ -36,7 +36,7 @@ fun TiendaCard(
     nombre: String,
     categoria: String,
     distanciaAprox: String,
-    cantidadOfertasActivas: Int,
+    cantidadOfertasActivas: Int? = null,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     direccion: String? = null
@@ -132,11 +132,13 @@ fun TiendaCard(
                 Spacer(modifier = Modifier.height(4.dp))
 
                 // Ofertas activas en color verde de disponibilidad
-                Text(
-                    text = "$cantidadOfertasActivas ofertas activas",
-                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                    color = MaterialTheme.colorScheme.tertiary
-                )
+                cantidadOfertasActivas?.let { cantidad ->
+                    Text(
+                        text = "$cantidad ofertas activas",
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                        color = MaterialTheme.colorScheme.tertiary
+                    )
+                }
             }
 
             // Flecha indicadora

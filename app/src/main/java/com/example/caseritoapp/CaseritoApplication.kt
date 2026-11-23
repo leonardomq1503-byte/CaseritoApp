@@ -7,6 +7,9 @@ import com.example.caseritoapp.data.repository.FavoritoRepository
 import com.example.caseritoapp.data.repository.NotificacionRepository
 import com.example.caseritoapp.data.repository.OfertaRepository
 import com.example.caseritoapp.data.repository.TiendaRepository
+import com.example.caseritoapp.data.repository.PersonalDataSyncRepository
+import com.example.caseritoapp.data.repository.ReservaRepository
+import com.example.caseritoapp.data.sync.SyncScheduler
 
 class CaseritoApplication : Application() {
 
@@ -27,11 +30,23 @@ class CaseritoApplication : Application() {
     }
 
     val favoritoRepository: FavoritoRepository by lazy {
-        FavoritoRepository(database.favoritoDao())
+        FavoritoRepository(database, ::schedulePersonalDataSync)
     }
 
     val notificacionRepository: NotificacionRepository by lazy {
-        NotificacionRepository(database.notificacionDao())
+        NotificacionRepository(database, ::schedulePersonalDataSync)
+    }
+
+    val personalDataSyncRepository: PersonalDataSyncRepository by lazy {
+        PersonalDataSyncRepository(database)
+    }
+
+    val reservaRepository: ReservaRepository by lazy {
+        ReservaRepository(database)
+    }
+
+    fun schedulePersonalDataSync(authUserId: String) {
+        SyncScheduler.enqueue(this, authUserId)
     }
 
     override fun onCreate() {

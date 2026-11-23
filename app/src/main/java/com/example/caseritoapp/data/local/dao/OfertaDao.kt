@@ -50,6 +50,9 @@ interface OfertaDao {
     @Query("SELECT * FROM productos_oferta WHERE id = :id LIMIT 1")
     suspend fun getOfertaPorId(id: Long): ProductoOfertaEntity?
 
+    @Query("UPDATE productos_oferta SET stock_disponible = :stock, estado = :estado WHERE id = :id")
+    suspend fun actualizarStock(id: Long, stock: Int, estado: String)
+
     @Query("SELECT * FROM imagenes_producto WHERE id_producto = :idProducto ORDER BY es_principal DESC, orden ASC")
     fun getImagenesPorProducto(idProducto: Long): Flow<List<ImagenProductoEntity>>
 

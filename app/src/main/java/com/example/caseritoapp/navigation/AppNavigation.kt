@@ -20,6 +20,7 @@ import com.example.caseritoapp.ui.auth.VerificacionScreen
 import com.example.caseritoapp.ui.home.HomeScreen
 import com.example.caseritoapp.ui.map.MapScreen
 import com.example.caseritoapp.ui.profile.ProfileScreen
+import com.example.caseritoapp.ui.profile.ReservasScreen
 import com.example.caseritoapp.ui.search.SearchScreen
 
 @Composable
@@ -60,8 +61,13 @@ fun AppNavigation(
 
         composable(Screen.Profile.route) {
             ProfileScreen(
-                onNavigateToLogin = { navController.navigate(Screen.Login.route) }
+                onNavigateToLogin = { navController.navigate(Screen.Login.route) },
+                onNavigateToReservations = { navController.navigate(Screen.Reservations.route) }
             )
+        }
+
+        composable(Screen.Reservations.route) {
+            ReservasScreen(onNavigateBack = { navController.popBackStack() })
         }
 
         // Flujos de Autenticación

@@ -34,7 +34,8 @@ import androidx.room.PrimaryKey
     indices = [
         Index(value = ["id_usuario"]),
         Index(value = ["id_producto"]),
-        Index(value = ["id_ubicacion"])
+        Index(value = ["id_ubicacion"]),
+        Index(value = ["id_remoto"], unique = true)
     ]
 )
 data class ReservaEntity(
@@ -58,5 +59,8 @@ data class ReservaEntity(
     val fechaReserva: String,
 
     @ColumnInfo(name = "fecha_expiracion")
-    val fechaExpiracion: String? = null
+    val fechaExpiracion: String? = null,
+
+    @ColumnInfo(name = "id_remoto")
+    val idRemoto: Long? = null
 )

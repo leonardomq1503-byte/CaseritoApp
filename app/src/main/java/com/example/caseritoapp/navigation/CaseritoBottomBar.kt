@@ -33,7 +33,8 @@ fun CaseritoBottomBar(
         tonalElevation = 6.dp
     ) {
         Screen.bottomNavItems.forEach { screen ->
-            val isSelected = currentRoute == screen.route
+            val isSelected = currentRoute == screen.route ||
+                (currentRoute == Screen.Reservations.route && screen == Screen.Profile)
 
             NavigationBarItem(
                 selected = isSelected,

@@ -16,7 +16,8 @@ class CaseritoViewModelFactory(
                     ofertaRepository = application.ofertaRepository,
                     tiendaRepository = application.tiendaRepository,
                     favoritoRepository = application.favoritoRepository,
-                    authRepository = application.authRepository
+                    authRepository = application.authRepository,
+                    reservaRepository = application.reservaRepository
                 ) as T
             }
             modelClass.isAssignableFrom(SearchViewModel::class.java) -> {
@@ -36,6 +37,12 @@ class CaseritoViewModelFactory(
                     favoritoRepository = application.favoritoRepository,
                     reservaDao = application.database.reservaDao(),
                     usuarioDao = application.database.usuarioDao()
+                ) as T
+            }
+            modelClass.isAssignableFrom(ReservasViewModel::class.java) -> {
+                ReservasViewModel(
+                    authRepository = application.authRepository,
+                    reservaRepository = application.reservaRepository
                 ) as T
             }
             modelClass.isAssignableFrom(AlertsViewModel::class.java) -> {

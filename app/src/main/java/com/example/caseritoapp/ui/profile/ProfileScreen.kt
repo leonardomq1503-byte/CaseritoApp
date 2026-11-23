@@ -51,6 +51,7 @@ import com.example.caseritoapp.ui.viewmodel.ProfileViewModel
 @Composable
 fun ProfileScreen(
     onNavigateToLogin: () -> Unit = {},
+    onNavigateToReservations: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: ProfileViewModel = viewModel(
         factory = CaseritoViewModelFactory(
@@ -155,7 +156,7 @@ fun ProfileScreen(
                     icono = Icons.Outlined.BookmarkBorder,
                     titulo = "Mis Reservas",
                     subtitulo = if (profileState.totalReservasActivas > 0) "${profileState.totalReservasActivas} reserva(s) activa(s)" else "Sin reservas pendientes",
-                    onClick = {}
+                    onClick = onNavigateToReservations
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f))
                 PerfilOpcionFila(

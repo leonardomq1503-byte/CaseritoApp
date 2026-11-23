@@ -20,17 +20,25 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+data class LocalAuthIdentity(
+    val authUserId: String,
+    val localUserId: Long
+)
+
 class AuthRepository(
     private val usuarioDao: UsuarioDao,
     private val supabase: SupabaseClient = SupabaseClientProvider.client
 ) {
     private val localUserSyncMutex = Mutex()
     val sessionStatus: Flow<SessionStatus> = supabase.auth.sessionStatus
-    val localUserId: Flow<Long?> = sessionStatus.map { getOrSyncCurrentLocalUserId() }
+    val localIdentity: Flow<LocalAuthIdentity?> = sessionStatus.map { getOrSyncCurrentIdentity() }
+    val localUserId: Flow<Long?> = localIdentity.map { it?.localUserId }
 
     fun getCurrentUserInfo(): UserInfo? = supabase.auth.currentUserOrNull()
 
-    suspend fun getOrSyncCurrentLocalUserId(): Long? = withContext(Dispatchers.IO) {
+    suspend fun getOrSyncCurrentLocalUserId(): Long? = getOrSyncCurrentIdentity()?.localUserId
+
+    suspend fun getOrSyncCurrentIdentity(): LocalAuthIdentity? = withContext(Dispatchers.IO) {
         localUserSyncMutex.withLock {
             val userInfo = supabase.auth.currentUserOrNull() ?: return@withLock null
             val authUserId = userInfo.id
@@ -48,18 +56,20 @@ class AuthRepository(
                 email = userInfo.email ?: existing?.email,
                 telefono = userInfo.phone ?: existing?.telefono,
                 passwordHash = "",
-                ciudadPreferida = existing?.ciudadPreferida,
+                ciudadPreferida = metadata?.get("ciudad_preferida")?.toString()?.replace("\"", "")
+                    ?: existing?.ciudadPreferida ?: "Arequipa",
                 estado = existing?.estado ?: "activo",
                 fechaRegistro = userInfo.createdAt?.toString() ?: existing?.fechaRegistro.orEmpty(),
                 ultimoLogin = now
             )
 
-            if (existing == null) {
+            val localUserId = if (existing == null) {
                 usuarioDao.insertUsuario(usuario)
             } else {
                 usuarioDao.updateUsuario(usuario)
                 existing.id
             }
+            LocalAuthIdentity(authUserId = authUserId, localUserId = localUserId)
         }
     }
 
@@ -81,7 +91,8 @@ class AuthRepository(
         pass: String,
         nombre: String,
         tipoUsuario: String,
-        telefono: String
+        telefono: String,
+        ciudad: String
     ): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             supabase.auth.signUpWith(Email) {
@@ -91,6 +102,7 @@ class AuthRepository(
                     put("nombre", nombre)
                     put("tipo_usuario", tipoUsuario)
                     put("telefono", telefono)
+                    put("ciudad_preferida", ciudad)
                 }
             }
             Result.success(Unit)

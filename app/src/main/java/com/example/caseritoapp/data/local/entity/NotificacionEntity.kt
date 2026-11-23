@@ -20,7 +20,8 @@ import androidx.room.PrimaryKey
         )
     ],
     indices = [
-        Index(value = ["id_usuario"])
+        Index(value = ["id_usuario"]),
+        Index(value = ["id_remoto"], unique = true)
     ]
 )
 data class NotificacionEntity(
@@ -45,5 +46,8 @@ data class NotificacionEntity(
     val leida: Boolean = false,
 
     @ColumnInfo(name = "fecha_creacion")
-    val fechaCreacion: String
+    val fechaCreacion: String,
+
+    @ColumnInfo(name = "id_remoto")
+    val idRemoto: Long? = null
 )

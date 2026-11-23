@@ -92,7 +92,7 @@ fun RegistroScreen(
     var nombreTienda by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var telefono by remember { mutableStateOf("") }
-    var ciudad by remember { mutableStateOf("Lima") }
+    var ciudad by remember { mutableStateOf("Arequipa") }
     var password by remember { mutableStateOf("") }
     var passwordConfirm by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
@@ -480,7 +480,8 @@ fun RegistroScreen(
                         pass = password,
                         nombre = nombreFinal,
                         tipoUsuario = tipoUsuario,
-                        telefono = telefono
+                        telefono = telefono,
+                        ciudad = ciudad
                     )
                 }
             },

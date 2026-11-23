@@ -13,6 +13,9 @@ interface FavoritoDao {
     @Query("SELECT * FROM favoritos WHERE id_usuario = :idUsuario ORDER BY fecha_creacion DESC")
     fun getFavoritosPorUsuario(idUsuario: Long): Flow<List<FavoritoEntity>>
 
+    @Query("SELECT * FROM favoritos WHERE id_usuario = :idUsuario AND tipo IN ('producto', 'tienda')")
+    suspend fun getFavoritosSincronizables(idUsuario: Long): List<FavoritoEntity>
+
     @Query("SELECT * FROM favoritos WHERE id_usuario = :idUsuario AND tipo = :tipo ORDER BY fecha_creacion DESC")
     fun getFavoritosPorTipo(idUsuario: Long, tipo: String): Flow<List<FavoritoEntity>>
 
@@ -30,6 +33,9 @@ interface FavoritoDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertFavorito(favorito: FavoritoEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertFavoritoSiNoExiste(favorito: FavoritoEntity): Long
 
     @Query("DELETE FROM favoritos WHERE id_usuario = :idUsuario AND tipo = :tipo AND id_objeto = :idObjeto")
     suspend fun deleteFavorito(idUsuario: Long, tipo: String, idObjeto: Long)

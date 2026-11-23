@@ -54,6 +54,13 @@ sealed class Screen(
         unselectedIcon = Icons.Outlined.Person
     )
 
+    data object Reservations : Screen(
+        route = "reservations",
+        title = "Mis Reservas",
+        selectedIcon = Icons.Filled.Person,
+        unselectedIcon = Icons.Outlined.Person
+    )
+
     data object Login : Screen(
         route = "login",
         title = "Iniciar Sesión",

@@ -70,7 +70,8 @@ class AuthViewModel(
         pass: String,
         nombre: String,
         tipoUsuario: String,
-        telefono: String
+        telefono: String,
+        ciudad: String
     ) {
         if (email.isBlank() || pass.isBlank() || nombre.isBlank()) {
             _uiState.value = _uiState.value.copy(errorMessage = "Por favor completa los campos requeridos")
@@ -84,7 +85,8 @@ class AuthViewModel(
                 pass = pass,
                 nombre = nombre.trim(),
                 tipoUsuario = tipoUsuario,
-                telefono = telefono.trim()
+                telefono = telefono.trim(),
+                ciudad = ciudad.trim()
             )
             if (result.isSuccess) {
                 _uiState.value = _uiState.value.copy(

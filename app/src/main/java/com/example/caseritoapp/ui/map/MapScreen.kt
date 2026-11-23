@@ -73,11 +73,13 @@ fun MapScreen(
     val scope = rememberCoroutineScope()
     val radios = listOf(1, 2, 5)
 
-    // Coordenada inicial: Miraflores, Lima (Parque Kennedy)
-    val mirafloresCenter = remember { LatLng(-12.1217, -77.0298) }
+    // Centro de Arequipa usado como vista inicial.
+    val arequipaCenter = remember {
+        LatLng(MapViewModel.AREQUIPA_LATITUDE, MapViewModel.AREQUIPA_LONGITUDE)
+    }
 
     val cameraPositionState = rememberCameraPositionState {
-        position = CameraPosition.fromLatLngZoom(mirafloresCenter, 14.5f)
+        position = CameraPosition.fromLatLngZoom(arequipaCenter, 13.5f)
     }
 
     val uiSettings = remember {
@@ -103,8 +105,8 @@ fun MapScreen(
     // Centrado animado al seleccionar una tienda
     LaunchedEffect(uiState.tiendaSeleccionada) {
         uiState.tiendaSeleccionada?.let { tiendaConUbi ->
-            val lat = tiendaConUbi.ubicacion.latitud ?: -12.1217
-            val lng = tiendaConUbi.ubicacion.longitud ?: -77.0298
+            val lat = requireNotNull(tiendaConUbi.ubicacion.latitud)
+            val lng = requireNotNull(tiendaConUbi.ubicacion.longitud)
             cameraPositionState.animate(
                 update = CameraUpdateFactory.newLatLngZoom(LatLng(lat, lng), 16f),
                 durationMs = 800
@@ -126,8 +128,8 @@ fun MapScreen(
         ) {
             // Marcadores personalizados con la paleta y logo de Caserito
             uiState.tiendasConUbicacion.forEach { item ->
-                val lat = item.ubicacion.latitud ?: -12.1217
-                val lng = item.ubicacion.longitud ?: -77.0298
+                val lat = requireNotNull(item.ubicacion.latitud)
+                val lng = requireNotNull(item.ubicacion.longitud)
                 val esSeleccionada = uiState.tiendaSeleccionada?.tienda?.id == item.tienda.id
 
                 MarkerComposable(
@@ -212,7 +214,7 @@ fun MapScreen(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
-                                text = "Miraflores, Lima (${uiState.tiendasConUbicacion.size} tiendas activas)",
+                                text = "Arequipa, Perú",
                                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                                 color = MaterialTheme.colorScheme.onSurface
                             )
@@ -242,12 +244,12 @@ fun MapScreen(
             }
         }
 
-        // Botón flotante para re-centrar la vista en Miraflores
+        // Botón flotante para re-centrar la vista en Arequipa
         FloatingActionButton(
             onClick = {
                 scope.launch {
                     cameraPositionState.animate(
-                        update = CameraUpdateFactory.newLatLngZoom(mirafloresCenter, 15f),
+                        update = CameraUpdateFactory.newLatLngZoom(arequipaCenter, 13.5f),
                         durationMs = 700
                     )
                 }
@@ -285,8 +287,7 @@ fun MapScreen(
                             nombre = tiendaConUbi.tienda.nombreComercial,
                             categoria = tiendaConUbi.tienda.categoriaPrincipal ?: "Comercio Local",
                             direccion = "${tiendaConUbi.ubicacion.direccion}, ${tiendaConUbi.ubicacion.ciudad}",
-                            distanciaAprox = "A ${tiendaConUbi.distanciaMetros} m de ti",
-                            cantidadOfertasActivas = 3,
+                            distanciaAprox = "A ${tiendaConUbi.distanciaMetros} m del centro de Arequipa",
                             onClick = {}
                         )
 

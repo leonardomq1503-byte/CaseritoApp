@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -22,6 +23,7 @@ import androidx.navigation.compose.rememberNavController
 import com.example.caseritoapp.navigation.AppNavigation
 import com.example.caseritoapp.navigation.CaseritoBottomBar
 import com.example.caseritoapp.navigation.Screen
+import com.example.caseritoapp.data.sync.SyncScheduler
 import com.example.caseritoapp.ui.theme.CaseritoAppTheme
 import com.example.caseritoapp.util.NotificationHelper
 
@@ -46,6 +48,13 @@ fun CaseritoMainApp() {
     val currentRoute = navBackStackEntry?.destination?.route
 
     val application = LocalContext.current.applicationContext as CaseritoApplication
+    LaunchedEffect(application) {
+        application.authRepository.localIdentity.collect { identity ->
+            if (identity != null) {
+                SyncScheduler.enqueue(application, identity.authUserId)
+            }
+        }
+    }
     val alertasNoLeidas by application.authRepository.localUserId
         .flatMapLatest { userId ->
             userId?.let { application.notificacionRepository.getCantidadNoLeidas(it) }

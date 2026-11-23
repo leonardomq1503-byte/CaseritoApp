@@ -23,6 +23,7 @@ import androidx.compose.material.icons.outlined.CloudDone
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -65,7 +66,20 @@ fun HomeScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val idsFavoritos by viewModel.idsFavoritos.collectAsStateWithLifecycle()
     val isAuthenticated by viewModel.isAuthenticated.collectAsStateWithLifecycle()
+    val reservaEnCurso by viewModel.reservaEnCurso.collectAsStateWithLifecycle()
+    val reservaFeedback by viewModel.reservaFeedback.collectAsStateWithLifecycle()
     var searchQuery by remember { mutableStateOf("") }
+
+    reservaFeedback?.let { mensaje ->
+        AlertDialog(
+            onDismissRequest = viewModel::limpiarReservaFeedback,
+            title = { Text(if (mensaje.startsWith("Reserva confirmada")) "¡Listo!" else "Reserva") },
+            text = { Text(mensaje) },
+            confirmButton = {
+                TextButton(onClick = viewModel::limpiarReservaFeedback) { Text("Aceptar") }
+            }
+        )
+    }
 
     // Lista dinámica de nombres de categorías (comienza con "Todas")
     val categoriasNombres = remember(uiState.categorias) {
@@ -104,7 +118,7 @@ fun HomeScreen(
                         )
                     }
                     Text(
-                        text = "Miraflores, Lima",
+                        text = "Arequipa, Perú",
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -244,6 +258,11 @@ fun HomeScreen(
                                 if (isAuthenticated) viewModel.toggleFavorito(oferta.id)
                                 else onNavigateToLogin()
                             },
+                            onReservarClick = {
+                                if (isAuthenticated) viewModel.reservarOferta(oferta.id, oferta.idUbicacion)
+                                else onNavigateToLogin()
+                            },
+                            reservando = reservaEnCurso == oferta.id,
                             stockRestante = oferta.stockDisponible,
                             onClick = {}
                         )
@@ -295,9 +314,8 @@ fun HomeScreen(
                         TiendaCard(
                             nombre = tienda.nombreComercial,
                             categoria = tienda.categoriaPrincipal ?: "Comercio Local",
-                            direccion = tienda.razonSocial ?: "Lima, Perú",
-                            distanciaAprox = "A pocos minutos",
-                            cantidadOfertasActivas = 3,
+                            direccion = tienda.razonSocial ?: "Arequipa, Perú",
+                            distanciaAprox = "Ubicación en el mapa",
                             onClick = {}
                         )
                     }

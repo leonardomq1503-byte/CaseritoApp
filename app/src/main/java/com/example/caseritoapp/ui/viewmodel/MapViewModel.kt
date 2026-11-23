@@ -18,14 +18,14 @@ import kotlinx.coroutines.flow.stateIn
 data class TiendaConUbicacion(
     val tienda: TiendaEntity,
     val ubicacion: UbicacionEntity,
-    val distanciaMetros: Int = 350
+    val distanciaMetros: Int
 )
 
 data class MapUiState(
     val tiendasConUbicacion: List<TiendaConUbicacion> = emptyList(),
     val tiendaSeleccionada: TiendaConUbicacion? = null,
-    val latitudCentro: Double = -12.1217,
-    val longitudCentro: Double = -77.0298,
+    val latitudCentro: Double = MapViewModel.AREQUIPA_LATITUDE,
+    val longitudCentro: Double = MapViewModel.AREQUIPA_LONGITUDE,
     val radioKm: Int = 2,
     val isLoading: Boolean = false
 )
@@ -33,6 +33,11 @@ data class MapUiState(
 class MapViewModel(
     private val tiendaRepository: TiendaRepository
 ) : ViewModel() {
+
+    companion object {
+        const val AREQUIPA_LATITUDE = -16.3988
+        const val AREQUIPA_LONGITUDE = -71.5369
+    }
 
     private val _tiendaSeleccionada = MutableStateFlow<TiendaConUbicacion?>(null)
     private val _radioKm = MutableStateFlow(2)
@@ -44,31 +49,33 @@ class MapViewModel(
         _radioKm
     ) { tiendas, ubicaciones, seleccionada, radio ->
         val combinadas = ubicaciones.mapNotNull { ubi ->
+            val latitud = ubi.latitud ?: return@mapNotNull null
+            val longitud = ubi.longitud ?: return@mapNotNull null
             val tienda = tiendas.find { it.id == ubi.idTienda }
             if (tienda != null) {
-                // Distancia aproximada ficticia basada en sucursal
-                val distancia = when (tienda.id) {
-                    1L -> 350
-                    2L -> 600
-                    3L -> 950
-                    else -> 1200
-                }
                 TiendaConUbicacion(
                     tienda = tienda,
                     ubicacion = ubi,
-                    distanciaMetros = distancia
+                    distanciaMetros = distanciaEnMetros(
+                        AREQUIPA_LATITUDE,
+                        AREQUIPA_LONGITUDE,
+                        latitud,
+                        longitud
+                    )
                 )
             } else null
         }
 
-        val tiendaActiva = seleccionada ?: combinadas.firstOrNull()
+        val tiendaActiva = seleccionada?.let { seleccionada ->
+            combinadas.firstOrNull { it.tienda.id == seleccionada.tienda.id }
+        }
 
         MapUiState(
             tiendasConUbicacion = combinadas,
             tiendaSeleccionada = tiendaActiva,
             radioKm = radio,
-            latitudCentro = tiendaActiva?.ubicacion?.latitud ?: -12.1217,
-            longitudCentro = tiendaActiva?.ubicacion?.longitud ?: -77.0298
+            latitudCentro = tiendaActiva?.ubicacion?.latitud ?: AREQUIPA_LATITUDE,
+            longitudCentro = tiendaActiva?.ubicacion?.longitud ?: AREQUIPA_LONGITUDE
         )
     }.stateIn(
         scope = viewModelScope,
@@ -85,8 +92,8 @@ class MapViewModel(
     }
 
     fun abrirEnGoogleMaps(context: Context, tiendaConUbi: TiendaConUbicacion) {
-        val lat = tiendaConUbi.ubicacion.latitud ?: -12.1217
-        val lng = tiendaConUbi.ubicacion.longitud ?: -77.0298
+        val lat = requireNotNull(tiendaConUbi.ubicacion.latitud)
+        val lng = requireNotNull(tiendaConUbi.ubicacion.longitud)
         val nombre = Uri.encode(tiendaConUbi.tienda.nombreComercial)
 
         val uri = Uri.parse("geo:$lat,$lng?q=$lat,$lng($nombre)")
@@ -102,5 +109,15 @@ class MapViewModel(
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK
             })
         }
+    }
+
+    private fun distanciaEnMetros(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Int {
+        val radioTierraMetros = 6_371_000.0
+        val diferenciaLatitud = Math.toRadians(lat2 - lat1)
+        val diferenciaLongitud = Math.toRadians(lon2 - lon1)
+        val a = kotlin.math.sin(diferenciaLatitud / 2) * kotlin.math.sin(diferenciaLatitud / 2) +
+            kotlin.math.cos(Math.toRadians(lat1)) * kotlin.math.cos(Math.toRadians(lat2)) *
+            kotlin.math.sin(diferenciaLongitud / 2) * kotlin.math.sin(diferenciaLongitud / 2)
+        return (2 * radioTierraMetros * kotlin.math.atan2(kotlin.math.sqrt(a), kotlin.math.sqrt(1 - a))).toInt()
     }
 }
