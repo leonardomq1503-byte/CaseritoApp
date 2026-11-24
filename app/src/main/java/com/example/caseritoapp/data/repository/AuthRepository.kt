@@ -5,6 +5,7 @@ import com.example.caseritoapp.data.local.entity.UsuarioEntity
 import com.example.caseritoapp.data.remote.SupabaseClientProvider
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.auth.OtpType
 import io.github.jan.supabase.auth.providers.builtin.Email
 import io.github.jan.supabase.auth.status.SessionStatus
 import io.github.jan.supabase.auth.user.UserInfo
@@ -37,6 +38,14 @@ class AuthRepository(
     fun getCurrentUserInfo(): UserInfo? = supabase.auth.currentUserOrNull()
 
     suspend fun getOrSyncCurrentLocalUserId(): Long? = getOrSyncCurrentIdentity()?.localUserId
+
+    suspend fun actualizarRolComercianteLocal() = withContext(Dispatchers.IO) {
+        val identity = getOrSyncCurrentIdentity() ?: return@withContext
+        val user = usuarioDao.getUsuarioPorAuthId(identity.authUserId) ?: return@withContext
+        if (user.tipoUsuario != "staff_tienda") {
+            usuarioDao.updateUsuario(user.copy(tipoUsuario = "staff_tienda"))
+        }
+    }
 
     suspend fun getOrSyncCurrentIdentity(): LocalAuthIdentity? = withContext(Dispatchers.IO) {
         localUserSyncMutex.withLock {
@@ -105,6 +114,34 @@ class AuthRepository(
                     put("ciudad_preferida", ciudad)
                 }
             }
+            // Cuando Supabase tiene la confirmación de correo desactivada, signup crea una sesión.
+            // Vincúlala inmediatamente con el perfil local; con confirmación activa no habrá sesión.
+            if (supabase.auth.currentUserOrNull() != null) {
+                getOrSyncCurrentLocalUserId()
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun verifySignupEmailCode(email: String, token: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            supabase.auth.verifyEmailOtp(
+                type = OtpType.Email.EMAIL,
+                email = email.trim(),
+                token = token.trim()
+            )
+            getOrSyncCurrentLocalUserId()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun resendSignupEmailCode(email: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            supabase.auth.resendEmail(OtpType.Email.SIGNUP, email.trim())
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)

@@ -1,31 +1,35 @@
 package com.example.caseritoapp.ui.viewmodel
 
-import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.caseritoapp.data.local.entity.NotificacionEntity
 import com.example.caseritoapp.data.repository.AuthRepository
 import com.example.caseritoapp.data.repository.NotificacionRepository
-import com.example.caseritoapp.util.NotificationHelper
+import com.example.caseritoapp.data.repository.PersonalDataSyncRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 
 data class AlertsUiState(
     val notificaciones: List<NotificacionEntity> = emptyList(),
     val cantidadNoLeidas: Int = 0,
-    val isLoading: Boolean = false
+    val isLoading: Boolean = false,
+    val autenticado: Boolean = false,
+    val sincronizando: Boolean = false,
+    val error: String? = null
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class AlertsViewModel(
     private val notificacionRepository: NotificacionRepository,
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val personalDataSyncRepository: PersonalDataSyncRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AlertsUiState(isLoading = true))
@@ -44,6 +48,16 @@ class AlertsViewModel(
                 )
             }
         }
+        viewModelScope.launch {
+            authRepository.localIdentity.collectLatest { identity ->
+                if (identity == null) {
+                    _uiState.value = _uiState.value.copy(autenticado = false, sincronizando = false)
+                } else {
+                    _uiState.value = _uiState.value.copy(autenticado = true)
+                    sincronizar(identity.authUserId, identity.localUserId)
+                }
+            }
+        }
     }
 
     fun marcarComoLeida(id: Long) {
@@ -60,26 +74,20 @@ class AlertsViewModel(
         }
     }
 
-    fun enviarNotificacionPrueba(context: Context) {
+    fun sincronizarAhora() {
         viewModelScope.launch {
-            val userId = authRepository.getOrSyncCurrentLocalUserId() ?: return@launch
-            val titulo = "¡Oferta Flash en Arequipa! ⚡"
-            val mensaje = "50% de descuento en la segunda prenda en Moda & Estilo, Arequipa, solo por hoy."
-
-            notificacionRepository.agregarNotificacion(
-                idUsuario = userId,
-                titulo = titulo,
-                mensaje = mensaje,
-                tipo = "nueva_oferta_tienda",
-                idObjeto = 2L,
-                tipoObjeto = "tienda"
-            )
-
-            NotificationHelper.mostrarNotificacion(
-                context = context,
-                titulo = titulo,
-                mensaje = mensaje
-            )
+            val identity = authRepository.getOrSyncCurrentIdentity() ?: return@launch
+            sincronizar(identity.authUserId, identity.localUserId)
         }
+    }
+
+    private suspend fun sincronizar(authUserId: String, localUserId: Long) {
+        if (_uiState.value.sincronizando) return
+        _uiState.value = _uiState.value.copy(sincronizando = true, error = null)
+        runCatching { personalDataSyncRepository.sincronizar(authUserId, localUserId) }
+            .onFailure { error ->
+                _uiState.value = _uiState.value.copy(error = error.message ?: "No se pudieron actualizar las alertas.")
+            }
+        _uiState.value = _uiState.value.copy(sincronizando = false)
     }
 }

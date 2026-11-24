@@ -17,6 +17,8 @@ data class AuthUiState(
     val errorMessage: String? = null,
     val loginSuccess: Boolean = false,
     val registerSuccess: Boolean = false,
+    val registrationNeedsEmailVerification: Boolean = false,
+    val emailVerificationSuccess: Boolean = false,
     val userEmail: String? = null
 )
 
@@ -89,9 +91,11 @@ class AuthViewModel(
                 ciudad = ciudad.trim()
             )
             if (result.isSuccess) {
+                val requiereVerificacion = authRepository.getCurrentUserInfo() == null
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     registerSuccess = true,
+                    registrationNeedsEmailVerification = requiereVerificacion,
                     userEmail = email.trim()
                 )
             } else {
@@ -108,6 +112,36 @@ class AuthViewModel(
         viewModelScope.launch {
             authRepository.signOut()
             _uiState.value = AuthUiState()
+        }
+    }
+
+    fun verifySignupCode(email: String, token: String) {
+        if (token.length != 6 || !token.all(Char::isDigit)) {
+            _uiState.value = _uiState.value.copy(errorMessage = "Ingresa el código de 6 dígitos del correo")
+            return
+        }
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null, emailVerificationSuccess = false)
+            val result = authRepository.verifySignupEmailCode(email, token)
+            _uiState.value = if (result.isSuccess) {
+                _uiState.value.copy(isLoading = false, emailVerificationSuccess = true)
+            } else {
+                _uiState.value.copy(
+                    isLoading = false,
+                    errorMessage = result.exceptionOrNull()?.localizedMessage ?: "No se pudo verificar el código"
+                )
+            }
+        }
+    }
+
+    fun resendSignupCode(email: String) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
+            val result = authRepository.resendSignupEmailCode(email)
+            _uiState.value = _uiState.value.copy(
+                isLoading = false,
+                errorMessage = result.exceptionOrNull()?.localizedMessage
+            )
         }
     }
 

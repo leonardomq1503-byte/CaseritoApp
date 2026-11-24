@@ -15,6 +15,9 @@ interface TiendaDao {
     @Query("SELECT * FROM tiendas WHERE estado = 'verificada' ORDER BY nombre_comercial ASC")
     fun getTiendasVerificadas(): Flow<List<TiendaEntity>>
 
+    @Query("SELECT * FROM tiendas WHERE id = :id LIMIT 1")
+    fun observarTiendaPorId(id: Long): Flow<TiendaEntity?>
+
     @Query("SELECT * FROM tiendas ORDER BY nombre_comercial ASC")
     fun getTodasLasTiendas(): Flow<List<TiendaEntity>>
 

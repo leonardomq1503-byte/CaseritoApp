@@ -57,6 +57,8 @@ fun HomeScreen(
     onNavigateToMap: () -> Unit = {},
     onNavigateToAlerts: () -> Unit = {},
     onNavigateToLogin: () -> Unit = {},
+    onNavigateToProductDetail: (Long) -> Unit = {},
+    onNavigateToStoreDetail: (Long) -> Unit = {},
     viewModel: HomeViewModel = viewModel(
         factory = CaseritoViewModelFactory(
             LocalContext.current.applicationContext as CaseritoApplication
@@ -65,6 +67,7 @@ fun HomeScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val idsFavoritos by viewModel.idsFavoritos.collectAsStateWithLifecycle()
+    val idsTiendasFavoritas by viewModel.idsTiendasFavoritas.collectAsStateWithLifecycle()
     val isAuthenticated by viewModel.isAuthenticated.collectAsStateWithLifecycle()
     val reservaEnCurso by viewModel.reservaEnCurso.collectAsStateWithLifecycle()
     val reservaFeedback by viewModel.reservaFeedback.collectAsStateWithLifecycle()
@@ -264,7 +267,7 @@ fun HomeScreen(
                             },
                             reservando = reservaEnCurso == oferta.id,
                             stockRestante = oferta.stockDisponible,
-                            onClick = {}
+                            onClick = { onNavigateToProductDetail(oferta.id) }
                         )
                     }
                 }
@@ -316,7 +319,12 @@ fun HomeScreen(
                             categoria = tienda.categoriaPrincipal ?: "Comercio Local",
                             direccion = tienda.razonSocial ?: "Arequipa, Perú",
                             distanciaAprox = "Ubicación en el mapa",
-                            onClick = {}
+                            esFavorita = tienda.id in idsTiendasFavoritas,
+                            onFavoritoClick = {
+                                if (isAuthenticated) viewModel.toggleFavoritoTienda(tienda.id)
+                                else onNavigateToLogin()
+                            },
+                            onClick = { onNavigateToStoreDetail(tienda.id) }
                         )
                     }
                 }

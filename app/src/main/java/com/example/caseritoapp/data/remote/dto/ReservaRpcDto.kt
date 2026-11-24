@@ -10,6 +10,14 @@ data class ReservaRpcResult(
 )
 
 @Serializable
+data class ReservaCanceladaRpcResult(
+    @SerialName("reserva_id") val reservaId: Long,
+    @SerialName("reserva_estado") val reservaEstado: String,
+    @SerialName("stock_restante") val stockRestante: Int,
+    @SerialName("oferta_estado") val ofertaEstado: String
+)
+
+@Serializable
 data class ReservaCloudDto(
     val id: Long,
     @SerialName("id_usuario") val idUsuario: String,

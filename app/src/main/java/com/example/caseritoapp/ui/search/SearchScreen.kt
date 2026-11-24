@@ -14,6 +14,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -35,6 +37,9 @@ import com.example.caseritoapp.ui.viewmodel.SearchViewModel
 
 @Composable
 fun SearchScreen(
+    onNavigateToProductDetail: (Long) -> Unit = {},
+    onNavigateToStoreDetail: (Long) -> Unit = {},
+    onNavigateToLogin: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: SearchViewModel = viewModel(
         factory = CaseritoViewModelFactory(
@@ -43,6 +48,26 @@ fun SearchScreen(
     )
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val favoritosProductos by viewModel.favoritosProductos.collectAsStateWithLifecycle()
+    val favoritosTiendas by viewModel.favoritosTiendas.collectAsStateWithLifecycle()
+    val estaAutenticado by viewModel.estaAutenticado.collectAsStateWithLifecycle()
+    val reservaEnCurso by viewModel.reservaEnCurso.collectAsStateWithLifecycle()
+    val mensajeReserva by viewModel.mensajeReserva.collectAsStateWithLifecycle()
+
+    if (mensajeReserva != null) {
+        AlertDialog(
+            onDismissRequest = viewModel::limpiarMensajeReserva,
+            title = { Text("Reserva") },
+            text = { Text(mensajeReserva.orEmpty()) },
+            confirmButton = {
+                TextButton(onClick = {
+                    val requiereLogin = !estaAutenticado
+                    viewModel.limpiarMensajeReserva()
+                    if (requiereLogin) onNavigateToLogin()
+                }) { Text(if (estaAutenticado) "Aceptar" else "Iniciar sesión") }
+            }
+        )
+    }
 
     val categoriasNombres = remember(uiState.categorias) {
         val list = mutableListOf("Todas")
@@ -142,11 +167,18 @@ fun SearchScreen(
                                 precioOriginal = oferta.precioOriginal,
                                 precioOferta = oferta.precioOferta,
                                 porcentajeDescuento = porcentajeDesc,
-                                esFavorito = false,
-                                onFavoritoClick = {},
-                                mostrarReservar = false,
+                                esFavorito = oferta.id in favoritosProductos,
+                                onFavoritoClick = {
+                                    if (estaAutenticado) viewModel.alternarFavorito("producto", oferta.id)
+                                    else onNavigateToLogin()
+                                },
+                                onReservarClick = {
+                                    if (estaAutenticado) viewModel.reservar(oferta.id, oferta.idUbicacion)
+                                    else onNavigateToLogin()
+                                },
+                                reservando = reservaEnCurso == oferta.id,
                                 stockRestante = oferta.stockDisponible,
-                                onClick = {}
+                                onClick = { onNavigateToProductDetail(oferta.id) }
                             )
                         }
                     }
@@ -170,7 +202,12 @@ fun SearchScreen(
                         categoria = tienda.categoriaPrincipal ?: "Comercio Local",
                         direccion = tienda.razonSocial ?: "Arequipa, Perú",
                         distanciaAprox = "Ubicación en el mapa",
-                        onClick = {}
+                        esFavorita = tienda.id in favoritosTiendas,
+                        onFavoritoClick = {
+                            if (estaAutenticado) viewModel.alternarFavorito("tienda", tienda.id)
+                            else onNavigateToLogin()
+                        },
+                        onClick = { onNavigateToStoreDetail(tienda.id) }
                     )
                 }
             }

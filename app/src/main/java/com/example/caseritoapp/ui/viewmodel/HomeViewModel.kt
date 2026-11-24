@@ -78,6 +78,8 @@ class HomeViewModel(
 
     private val _idsFavoritos = MutableStateFlow<Set<Long>>(emptySet())
     val idsFavoritos: StateFlow<Set<Long>> = _idsFavoritos.asStateFlow()
+    private val _idsTiendasFavoritas = MutableStateFlow<Set<Long>>(emptySet())
+    val idsTiendasFavoritas: StateFlow<Set<Long>> = _idsTiendasFavoritas.asStateFlow()
     private val _reservaEnCurso = MutableStateFlow<Long?>(null)
     val reservaEnCurso: StateFlow<Long?> = _reservaEnCurso.asStateFlow()
     private val _reservaFeedback = MutableStateFlow<String?>(null)
@@ -95,6 +97,11 @@ class HomeViewModel(
                 _idsFavoritos.value = ids.toSet()
             }
         }
+        viewModelScope.launch {
+            authRepository.localUserId.flatMapLatest { userId ->
+                userId?.let { favoritoRepository.getIdsFavoritos(it, "tienda") } ?: flowOf(emptyList())
+            }.collect { ids -> _idsTiendasFavoritas.value = ids.toSet() }
+        }
         sincronizarDatos()
     }
 
@@ -111,6 +118,13 @@ class HomeViewModel(
                 "producto",
                 idOferta
             )
+        }
+    }
+
+    fun toggleFavoritoTienda(idTienda: Long) {
+        viewModelScope.launch {
+            val identity = authRepository.getOrSyncCurrentIdentity() ?: return@launch
+            favoritoRepository.toggleFavorito(identity.localUserId, identity.authUserId, "tienda", idTienda)
         }
     }
 

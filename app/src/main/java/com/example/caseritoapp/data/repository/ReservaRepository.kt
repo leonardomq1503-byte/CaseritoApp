@@ -5,6 +5,7 @@ import com.example.caseritoapp.data.local.CaseritoDatabase
 import com.example.caseritoapp.data.local.entity.ReservaEntity
 import com.example.caseritoapp.data.remote.SupabaseClientProvider
 import com.example.caseritoapp.data.remote.dto.ReservaCloudDto
+import com.example.caseritoapp.data.remote.dto.ReservaCanceladaRpcResult
 import com.example.caseritoapp.data.remote.dto.ReservaRpcResult
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
@@ -69,6 +70,11 @@ class ReservaRepository(
     ): ReservaCreada = withContext(Dispatchers.IO) {
         require(cantidad > 0) { "La cantidad debe ser mayor que cero" }
 
+        val oferta = database.ofertaDao().getOfertaPorId(idProducto)
+            ?: error("La oferta no está guardada en este dispositivo. Actualiza el catálogo e inténtalo nuevamente.")
+        require(oferta.idUbicacion == idUbicacion) { "La oferta no pertenece a esta sucursal." }
+        require(oferta.estado == "activo" && oferta.stockDisponible > 0) { "Esta oferta ya no tiene stock disponible." }
+
         val response = supabase.postgrest.rpc(
             function = "crear_reserva",
             parameters = buildJsonObject {
@@ -80,8 +86,6 @@ class ReservaRepository(
         val creada = response.decodeList<ReservaRpcResult>().singleOrNull()
             ?: error("Supabase no devolvió la reserva creada")
 
-        val oferta = database.ofertaDao().getOfertaPorId(idProducto)
-            ?: error("La oferta no está guardada en este dispositivo")
         val fechaReserva = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US).format(Date())
 
         database.withTransaction {
@@ -104,5 +108,28 @@ class ReservaRepository(
         }
 
         ReservaCreada(creada.reservaId, creada.stockRestante)
+    }
+
+    suspend fun cancelarReserva(idRemoto: Long): Int = withContext(Dispatchers.IO) {
+        val local = database.reservaDao().getReservaPorIdRemoto(idRemoto)
+            ?: error("No se encontró esta reserva en el dispositivo.")
+        require(local.estado == "pendiente") { "Solo puedes cancelar reservas pendientes." }
+
+        val response = supabase.postgrest.rpc(
+            function = "cancelar_reserva",
+            parameters = buildJsonObject { put("p_id_reserva", idRemoto) }
+        )
+        val cancelada = response.decodeList<ReservaCanceladaRpcResult>().singleOrNull()
+            ?: error("Supabase no devolvió la reserva cancelada.")
+
+        database.withTransaction {
+            database.reservaDao().updateReserva(local.copy(estado = cancelada.reservaEstado))
+            database.ofertaDao().actualizarStock(
+                id = local.idProducto,
+                stock = cancelada.stockRestante,
+                estado = cancelada.ofertaEstado
+            )
+        }
+        cancelada.stockRestante
     }
 }

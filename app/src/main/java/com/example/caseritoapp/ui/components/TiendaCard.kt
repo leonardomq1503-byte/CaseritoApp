@@ -14,11 +14,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.ChevronRight
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Storefront
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Text
@@ -39,7 +42,9 @@ fun TiendaCard(
     cantidadOfertasActivas: Int? = null,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    direccion: String? = null
+    direccion: String? = null,
+    esFavorita: Boolean = false,
+    onFavoritoClick: (() -> Unit)? = null
 ) {
     OutlinedCard(
         shape = RoundedCornerShape(16.dp),
@@ -141,13 +146,22 @@ fun TiendaCard(
                 }
             }
 
-            // Flecha indicadora
-            Icon(
-                imageVector = Icons.Outlined.ChevronRight,
-                contentDescription = "Ver tienda",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(20.dp)
-            )
+            if (onFavoritoClick != null) {
+                IconButton(onClick = onFavoritoClick) {
+                    Icon(
+                        imageVector = if (esFavorita) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                        contentDescription = if (esFavorita) "Quitar tienda de favoritos" else "Guardar tienda en favoritos",
+                        tint = if (esFavorita) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            } else {
+                Icon(
+                    imageVector = Icons.Outlined.ChevronRight,
+                    contentDescription = "Ver tienda",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
         }
     }
 }

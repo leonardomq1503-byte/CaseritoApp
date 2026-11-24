@@ -26,6 +26,16 @@ sealed class Screen(
         unselectedIcon = Icons.Outlined.Home
     )
 
+    data object Welcome : Screen("welcome", "Bienvenido", Icons.Filled.Home, Icons.Outlined.Home)
+    data object StoreRegistration : Screen("store-registration", "Registrar tienda", Icons.Filled.Person, Icons.Outlined.Person)
+    data object Merchant : Screen("merchant", "Panel de mi tienda", Icons.Filled.Person, Icons.Outlined.Person)
+    data object ProductDetail : Screen("product-detail/{productId}", "Detalle del producto", Icons.Filled.Search, Icons.Outlined.Search) {
+        fun createRoute(productId: Long) = "product-detail/$productId"
+    }
+    data object StoreDetail : Screen("store-detail/{storeId}", "Detalle de la tienda", Icons.Filled.LocationOn, Icons.Outlined.LocationOn) {
+        fun createRoute(storeId: Long) = "store-detail/$storeId"
+    }
+
     data object Search : Screen(
         route = "search",
         title = "Buscar",
@@ -61,6 +71,13 @@ sealed class Screen(
         unselectedIcon = Icons.Outlined.Person
     )
 
+    data object Favorites : Screen(
+        route = "favorites",
+        title = "Mis Favoritos",
+        selectedIcon = Icons.Filled.Person,
+        unselectedIcon = Icons.Outlined.Person
+    )
+
     data object Login : Screen(
         route = "login",
         title = "Iniciar Sesión",
@@ -85,6 +102,9 @@ sealed class Screen(
     }
 
     companion object {
-        val bottomNavItems = listOf(Home, Search, Map, Alerts, Profile)
+        // Se calcula al consultar la barra y no durante la inicialización del companion.
+        // Así se evita una lista con objetos aún no inicializados al arrancar la app.
+        val bottomNavItems: List<Screen>
+            get() = listOf(Home, Search, Map, Alerts, Profile)
     }
 }

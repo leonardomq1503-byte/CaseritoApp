@@ -45,6 +45,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -52,14 +53,25 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.caseritoapp.CaseritoApplication
+import com.example.caseritoapp.ui.viewmodel.AuthViewModel
+import com.example.caseritoapp.ui.viewmodel.CaseritoViewModelFactory
 
 @Composable
 fun VerificacionScreen(
     destino: String,
     onVerificationSuccess: () -> Unit,
     onNavigateBack: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    viewModel: AuthViewModel = viewModel(
+        factory = CaseritoViewModelFactory(
+            LocalContext.current.applicationContext as CaseritoApplication
+        )
+    )
 ) {
+    val authState by viewModel.uiState.collectAsStateWithLifecycle()
     var otpCode by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var segundosRestantes by remember { mutableIntStateOf(59) }
@@ -80,6 +92,13 @@ fun VerificacionScreen(
 
     LaunchedEffect(Unit) {
         focusRequester.requestFocus()
+    }
+
+    LaunchedEffect(authState.emailVerificationSuccess) {
+        if (authState.emailVerificationSuccess) {
+            viewModel.limpiarEstado()
+            onVerificationSuccess()
+        }
     }
 
     Column(
@@ -128,7 +147,7 @@ fun VerificacionScreen(
         Spacer(modifier = Modifier.height(20.dp))
 
         Text(
-            text = "Verifica tu Código",
+            text = "Verifica tu correo",
             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
             color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center
@@ -176,9 +195,7 @@ fun VerificacionScreen(
                 keyboardActions = KeyboardActions(
                     onDone = {
                         focusManager.clearFocus()
-                        if (otpCode.length == 6) {
-                            onVerificationSuccess()
-                        }
+                        if (otpCode.length == 6) viewModel.verifySignupCode(destino, otpCode)
                     }
                 ),
                 modifier = Modifier
@@ -221,10 +238,11 @@ fun VerificacionScreen(
             }
         }
 
-        if (errorMessage != null) {
+        val mensaje = authState.errorMessage ?: errorMessage
+        if (mensaje != null) {
             Spacer(modifier = Modifier.height(12.dp))
             Text(
-                text = errorMessage!!,
+                text = mensaje,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error,
                 textAlign = TextAlign.Center
@@ -238,11 +256,12 @@ fun VerificacionScreen(
             onClick = {
                 focusManager.clearFocus()
                 if (otpCode.length == 6) {
-                    onVerificationSuccess()
+                    viewModel.verifySignupCode(destino, otpCode)
                 } else {
                     errorMessage = "Por favor ingresa los 6 dígitos del código"
                 }
             },
+            enabled = !authState.isLoading,
             shape = RoundedCornerShape(14.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.primary
@@ -251,7 +270,13 @@ fun VerificacionScreen(
                 .fillMaxWidth()
                 .height(52.dp)
         ) {
-            Text(
+            if (authState.isLoading) {
+                androidx.compose.material3.CircularProgressIndicator(
+                    modifier = Modifier.size(22.dp),
+                    strokeWidth = 2.dp,
+                    color = MaterialTheme.colorScheme.onPrimary
+                )
+            } else Text(
                 text = "Confirmar Código",
                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.onPrimary
@@ -276,6 +301,7 @@ fun VerificacionScreen(
                         segundosRestantes = 59
                         puedeReenviar = false
                         otpCode = ""
+                        viewModel.resendSignupCode(destino)
                     }
                 ) {
                     Text(

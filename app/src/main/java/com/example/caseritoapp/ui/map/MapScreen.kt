@@ -61,6 +61,7 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun MapScreen(
+    onNavigateToStoreDetail: (Long) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: MapViewModel = viewModel(
         factory = CaseritoViewModelFactory(
@@ -288,7 +289,7 @@ fun MapScreen(
                             categoria = tiendaConUbi.tienda.categoriaPrincipal ?: "Comercio Local",
                             direccion = "${tiendaConUbi.ubicacion.direccion}, ${tiendaConUbi.ubicacion.ciudad}",
                             distanciaAprox = "A ${tiendaConUbi.distanciaMetros} m del centro de Arequipa",
-                            onClick = {}
+                            onClick = { onNavigateToStoreDetail(tiendaConUbi.tienda.id) }
                         )
 
                         Spacer(modifier = Modifier.height(10.dp))

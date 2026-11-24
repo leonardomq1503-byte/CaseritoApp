@@ -7,11 +7,33 @@ import com.example.caseritoapp.data.mapper.toEntity
 import com.example.caseritoapp.data.remote.SupabaseClientProvider
 import com.example.caseritoapp.data.remote.dto.TiendaDto
 import com.example.caseritoapp.data.remote.dto.UbicacionDto
+import com.example.caseritoapp.data.remote.dto.RegistrarTiendaRpcResult
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+
+data class RegistroTienda(
+    val nombreComercial: String,
+    val nombreSucursal: String,
+    val direccion: String,
+    val ciudad: String,
+    val razonSocial: String? = null,
+    val tipoNegocio: String? = null,
+    val categoriaPrincipal: String? = null,
+    val descripcion: String? = null,
+    val web: String? = null,
+    val telefono: String? = null,
+    val horarios: String? = null,
+    val latitud: Double? = null,
+    val longitud: Double? = null
+)
+
+data class TiendaRegistrada(val idTienda: Long, val idUbicacion: Long)
 
 class TiendaRepository(
     private val tiendaDao: TiendaDao,
@@ -32,6 +54,32 @@ class TiendaRepository(
 
     suspend fun getTiendaPorId(id: Long): TiendaEntity? {
         return tiendaDao.getTiendaPorId(id)
+    }
+
+    fun observarTiendaPorId(id: Long): Flow<TiendaEntity?> = tiendaDao.observarTiendaPorId(id)
+
+    suspend fun registrarTienda(datos: RegistroTienda): TiendaRegistrada = withContext(Dispatchers.IO) {
+        val resultado = supabase.postgrest.rpc(
+            function = "registrar_tienda",
+            parameters = buildJsonObject {
+                put("p_nombre_comercial", datos.nombreComercial)
+                put("p_nombre_sucursal", datos.nombreSucursal)
+                put("p_direccion", datos.direccion)
+                put("p_ciudad", datos.ciudad)
+                put("p_razon_social", datos.razonSocial)
+                put("p_tipo_negocio", datos.tipoNegocio)
+                put("p_categoria_principal", datos.categoriaPrincipal)
+                put("p_descripcion", datos.descripcion)
+                put("p_web", datos.web)
+                put("p_telefono", datos.telefono)
+                put("p_horarios", datos.horarios)
+                put("p_latitud", datos.latitud)
+                put("p_longitud", datos.longitud)
+            }
+        ).decodeList<RegistrarTiendaRpcResult>().singleOrNull()
+            ?: error("Supabase no devolvió la tienda registrada")
+
+        TiendaRegistrada(resultado.idTienda, resultado.idUbicacion)
     }
 
     // Sincronización en segundo plano con Supabase

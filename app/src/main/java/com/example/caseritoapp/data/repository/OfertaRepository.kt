@@ -4,6 +4,7 @@ import com.example.caseritoapp.data.local.dao.OfertaConDetalle
 import com.example.caseritoapp.data.local.dao.OfertaDao
 import com.example.caseritoapp.data.local.entity.CategoriaEntity
 import com.example.caseritoapp.data.local.entity.ProductoOfertaEntity
+import com.example.caseritoapp.data.local.entity.ImagenProductoEntity
 import com.example.caseritoapp.data.mapper.toEntity
 import com.example.caseritoapp.data.remote.SupabaseClientProvider
 import com.example.caseritoapp.data.remote.dto.CategoriaDto
@@ -22,6 +23,13 @@ class OfertaRepository(
     val ofertasActivas: Flow<List<ProductoOfertaEntity>> = ofertaDao.getOfertasActivas()
     val ofertasConDetalle: Flow<List<OfertaConDetalle>> = ofertaDao.getOfertasConDetalle()
     val categorias: Flow<List<CategoriaEntity>> = ofertaDao.getCategorias()
+
+    fun observarOfertaConDetalle(id: Long): Flow<OfertaConDetalle?> = ofertaDao.getOfertaConDetallePorId(id)
+
+    fun observarImagenes(idProducto: Long): Flow<List<ImagenProductoEntity>> = ofertaDao.getImagenesPorProducto(idProducto)
+
+    fun observarOfertasActivasPorTienda(idTienda: Long): Flow<List<OfertaConDetalle>> =
+        ofertaDao.getOfertasActivasPorTienda(idTienda)
 
     fun getOfertasPorCategoria(categoriaId: Long): Flow<List<ProductoOfertaEntity>> {
         return ofertaDao.getOfertasPorCategoria(categoriaId)

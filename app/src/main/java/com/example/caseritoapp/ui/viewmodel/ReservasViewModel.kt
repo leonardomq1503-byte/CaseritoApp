@@ -16,7 +16,9 @@ data class ReservasUiState(
     val reservas: List<ReservaConDetalle> = emptyList(),
     val sincronizando: Boolean = false,
     val mensaje: String? = null,
-    val autenticado: Boolean = false
+    val autenticado: Boolean = false,
+    val reservaCancelando: Long? = null,
+    val mensajeAccion: String? = null
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -35,7 +37,7 @@ class ReservasViewModel(
                     return@collectLatest
                 }
 
-                _uiState.value = _uiState.value.copy(sincronizando = true, mensaje = null, autenticado = true)
+                _uiState.value = ReservasUiState(sincronizando = true, autenticado = true)
                 var errorSync: String? = null
                 try {
                     reservaRepository.sincronizarReservas(identity.authUserId, identity.localUserId)
@@ -65,5 +67,29 @@ class ReservasViewModel(
                 )
             }
         }
+    }
+
+    fun cancelarReserva(idRemoto: Long) {
+        if (_uiState.value.reservaCancelando != null) return
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(reservaCancelando = idRemoto, mensajeAccion = null)
+            runCatching { reservaRepository.cancelarReserva(idRemoto) }
+                .onSuccess { stock ->
+                    _uiState.value = _uiState.value.copy(
+                        mensajeAccion = "Reserva cancelada. Se devolvieron $stock unidad(es) al stock."
+                    )
+                }
+                .onFailure { error ->
+                    _uiState.value = _uiState.value.copy(
+                        mensajeAccion = error.message?.takeIf { it.isNotBlank() }
+                            ?: "No se pudo cancelar la reserva. Comprueba tu conexión e inténtalo nuevamente."
+                    )
+                }
+            _uiState.value = _uiState.value.copy(reservaCancelando = null)
+        }
+    }
+
+    fun limpiarMensajeAccion() {
+        _uiState.value = _uiState.value.copy(mensajeAccion = null)
     }
 }

@@ -9,6 +9,7 @@ import com.example.caseritoapp.data.repository.OfertaRepository
 import com.example.caseritoapp.data.repository.TiendaRepository
 import com.example.caseritoapp.data.repository.PersonalDataSyncRepository
 import com.example.caseritoapp.data.repository.ReservaRepository
+import com.example.caseritoapp.data.repository.MerchantRepository
 import com.example.caseritoapp.data.sync.SyncScheduler
 
 class CaseritoApplication : Application() {
@@ -38,11 +39,22 @@ class CaseritoApplication : Application() {
     }
 
     val personalDataSyncRepository: PersonalDataSyncRepository by lazy {
-        PersonalDataSyncRepository(database)
+        PersonalDataSyncRepository(database, onNewNotification = { notification ->
+            com.example.caseritoapp.util.NotificationHelper.mostrarNotificacion(
+                context = this,
+                titulo = notification.titulo,
+                mensaje = notification.mensaje.orEmpty(),
+                notifId = notification.idRemoto?.hashCode() ?: notification.id.hashCode()
+            )
+        })
     }
 
     val reservaRepository: ReservaRepository by lazy {
         ReservaRepository(database)
+    }
+
+    val merchantRepository: MerchantRepository by lazy {
+        MerchantRepository()
     }
 
     fun schedulePersonalDataSync(authUserId: String) {

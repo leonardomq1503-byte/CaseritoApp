@@ -22,10 +22,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.LocalOffer
 import androidx.compose.material.icons.outlined.Notifications
-import androidx.compose.material.icons.outlined.NotificationsActive
+import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Storefront
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -33,7 +31,14 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.IconButton
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,14 +47,20 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.caseritoapp.CaseritoApplication
 import com.example.caseritoapp.ui.viewmodel.AlertsViewModel
 import com.example.caseritoapp.ui.viewmodel.CaseritoViewModelFactory
+import java.time.OffsetDateTime
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 @Composable
 fun AlertsScreen(
+    onNavigateToLogin: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: AlertsViewModel = viewModel(
         factory = CaseritoViewModelFactory(
@@ -59,6 +70,12 @@ fun AlertsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    LaunchedEffect(uiState.autenticado) {
+        if (uiState.autenticado && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+    }
 
     Column(
         modifier = modifier
@@ -86,46 +103,34 @@ fun AlertsScreen(
                 )
             }
 
-            if (uiState.cantidadNoLeidas > 0) {
-                TextButton(
-                    onClick = { viewModel.marcarTodasComoLeidas() }
-                ) {
-                    Text(
-                        text = "Marcar todas",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = viewModel::sincronizarAhora, enabled = !uiState.sincronizando) {
+                    if (uiState.sincronizando) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                    else Icon(Icons.Outlined.Refresh, contentDescription = "Actualizar alertas")
+                }
+                if (uiState.cantidadNoLeidas > 0) {
+                    TextButton(onClick = { viewModel.marcarTodasComoLeidas() }) {
+                        Text("Marcar todas", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                    }
                 }
             }
         }
 
-        // Botón para simular notificación Push en vivo
-        Button(
-            onClick = { viewModel.enviarNotificacionPrueba(context) },
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.primary
-            ),
-            shape = RoundedCornerShape(12.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 4.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Outlined.NotificationsActive,
-                contentDescription = null,
-                modifier = Modifier.size(18.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = "Simular Alerta de Oferta Flash",
-                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold)
-            )
+        uiState.error?.let { error ->
+            Text("No se pudo actualizar: $error", color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
         }
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        if (uiState.isLoading) {
+        if (!uiState.autenticado) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Inicia sesión para consultar tus alertas.", style = MaterialTheme.typography.bodyLarge)
+                    TextButton(onClick = onNavigateToLogin) { Text("Iniciar sesión") }
+                }
+            }
+        } else if (uiState.isLoading) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
@@ -148,7 +153,7 @@ fun AlertsScreen(
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        text = "No tienes notificaciones pendientes",
+                        text = "Todavía no tienes alertas",
                         style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -169,7 +174,7 @@ fun AlertsScreen(
                 items(uiState.notificaciones, key = { it.id }) { notif ->
                     val icono = when (notif.tipo) {
                         "estado_reserva" -> Icons.Outlined.CheckCircle
-                        "cercania" -> Icons.Outlined.Storefront
+                        "nueva_reserva", "cercania" -> Icons.Outlined.Storefront
                         else -> Icons.Outlined.LocalOffer
                     }
 
@@ -231,7 +236,7 @@ fun AlertsScreen(
                                         modifier = Modifier.weight(1f)
                                     )
                                     Text(
-                                        text = "Reciente",
+                                        text = notif.fechaCreacion.fechaAlertaLegible(),
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -252,4 +257,11 @@ fun AlertsScreen(
             }
         }
     }
+}
+
+private fun String.fechaAlertaLegible(): String {
+    val formato = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm", Locale.forLanguageTag("es-PE"))
+    return runCatching { OffsetDateTime.parse(this).toLocalDateTime().format(formato) }
+        .recoverCatching { LocalDateTime.parse(this).format(formato) }
+        .getOrElse { take(16).replace('T', ' ') }
 }

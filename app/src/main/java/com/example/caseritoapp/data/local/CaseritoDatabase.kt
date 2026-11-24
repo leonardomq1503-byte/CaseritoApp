@@ -53,7 +53,7 @@ import com.example.caseritoapp.data.local.entity.VerificacionEntity
         HistorialOfertaEntity::class,
         SyncOperationEntity::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = false
 )
 abstract class CaseritoDatabase : RoomDatabase() {
@@ -107,6 +107,14 @@ abstract class CaseritoDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL(
+                    "DELETE FROM notificaciones WHERE titulo = '¡Oferta Flash en Arequipa! ⚡' AND id_remoto IS NULL"
+                )
+            }
+        }
+
         @Volatile
         private var INSTANCE: CaseritoDatabase? = null
 
@@ -117,7 +125,7 @@ abstract class CaseritoDatabase : RoomDatabase() {
                     CaseritoDatabase::class.java,
                     "caserito_database"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                     .fallbackToDestructiveMigration(dropAllTables = true)
                     .build()
                 INSTANCE = instance

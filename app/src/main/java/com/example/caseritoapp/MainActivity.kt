@@ -10,6 +10,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -32,26 +33,42 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         NotificationHelper.crearCanalNotificaciones(this)
         enableEdgeToEdge()
+        val openAlerts = intent.getBooleanExtra(EXTRA_OPEN_ALERTS, false)
         setContent {
             CaseritoAppTheme {
-                CaseritoMainApp()
+                CaseritoMainApp(openAlertsOnStart = openAlerts)
             }
         }
+    }
+
+    companion object {
+        const val EXTRA_OPEN_ALERTS = "com.example.caseritoapp.OPEN_ALERTS"
     }
 }
 
 @Composable
 @OptIn(ExperimentalCoroutinesApi::class)
-fun CaseritoMainApp() {
+fun CaseritoMainApp(openAlertsOnStart: Boolean = false) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
     val application = LocalContext.current.applicationContext as CaseritoApplication
+    val preferences = remember(application) {
+        application.getSharedPreferences("caserito_preferences", android.content.Context.MODE_PRIVATE)
+    }
+    val startDestination = remember(application, openAlertsOnStart) {
+        if (openAlertsOnStart) Screen.Alerts.route
+        else if (preferences.getBoolean("welcome_seen", false) || application.authRepository.getCurrentUserInfo() != null) {
+            Screen.Home.route
+        } else Screen.Welcome.route
+    }
     LaunchedEffect(application) {
         application.authRepository.localIdentity.collect { identity ->
             if (identity != null) {
                 SyncScheduler.enqueue(application, identity.authUserId)
+            } else {
+                SyncScheduler.cancelPeriodic(application)
             }
         }
     }
@@ -80,7 +97,11 @@ fun CaseritoMainApp() {
     ) { innerPadding ->
         AppNavigation(
             navController = navController,
-            paddingValues = innerPadding
+            paddingValues = innerPadding,
+            startDestination = startDestination,
+            onWelcomeFinished = {
+                preferences.edit().putBoolean("welcome_seen", true).apply()
+            }
         )
     }
 }

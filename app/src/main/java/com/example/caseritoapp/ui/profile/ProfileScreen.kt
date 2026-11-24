@@ -52,6 +52,8 @@ import com.example.caseritoapp.ui.viewmodel.ProfileViewModel
 fun ProfileScreen(
     onNavigateToLogin: () -> Unit = {},
     onNavigateToReservations: () -> Unit = {},
+    onNavigateToStoreRegistration: () -> Unit = {},
+    onNavigateToFavorites: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: ProfileViewModel = viewModel(
         factory = CaseritoViewModelFactory(
@@ -163,7 +165,7 @@ fun ProfileScreen(
                     icono = Icons.Outlined.FavoriteBorder,
                     titulo = "Mis Favoritos",
                     subtitulo = "${profileState.totalFavoritos} elemento(s) guardado(s)",
-                    onClick = {}
+                    onClick = { if (profileState.estaAutenticado) onNavigateToFavorites() else onNavigateToLogin() }
                 )
             }
         }
@@ -189,8 +191,10 @@ fun ProfileScreen(
             PerfilOpcionFila(
                 icono = Icons.Outlined.Storefront,
                 titulo = "Panel de mi Tienda",
-                subtitulo = if (profileState.tipoUsuario == "staff_tienda") "Administrar ofertas y sucursales" else "Registrar comercio para publicar ofertas",
-                onClick = {}
+                subtitulo = if (profileState.tipoUsuario == "staff_tienda") "Ver estado de la solicitud y administrar ofertas" else "Registrar un comercio y gestionar sus ofertas",
+                onClick = {
+                    if (profileState.estaAutenticado) onNavigateToStoreRegistration() else onNavigateToLogin()
+                }
             )
         }
 

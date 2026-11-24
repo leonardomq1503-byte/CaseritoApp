@@ -74,6 +74,7 @@ import com.example.caseritoapp.ui.viewmodel.CaseritoViewModelFactory
 @Composable
 fun RegistroScreen(
     onNavigateToVerification: (String) -> Unit,
+    onRegistrationSuccess: () -> Unit,
     onNavigateToLogin: () -> Unit,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
@@ -101,10 +102,11 @@ fun RegistroScreen(
 
     val focusManager = LocalFocusManager.current
 
-    LaunchedEffect(authState.registerSuccess) {
+    LaunchedEffect(authState.registerSuccess, authState.registrationNeedsEmailVerification) {
         if (authState.registerSuccess) {
+            val necesitaCodigo = authState.registrationNeedsEmailVerification
             viewModel.limpiarEstado()
-            onNavigateToVerification(email)
+            if (necesitaCodigo) onNavigateToVerification(email) else onRegistrationSuccess()
         }
     }
 

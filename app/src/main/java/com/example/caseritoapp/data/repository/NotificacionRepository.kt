@@ -69,28 +69,6 @@ class NotificacionRepository(
             if (changed.isNotEmpty()) scheduleSync(authUserId)
         }
 
-    /** Inserta una alerta local de demostración; las alertas remotas las genera el backend. */
-    suspend fun agregarNotificacion(
-        idUsuario: Long,
-        titulo: String,
-        mensaje: String,
-        tipo: String = "nueva_oferta_tienda",
-        idObjeto: Long? = null,
-        tipoObjeto: String? = null
-    ): Long = withContext(Dispatchers.IO) {
-        notificacionDao.insertNotificacion(
-            NotificacionEntity(
-                idUsuario = idUsuario,
-                tipo = tipo,
-                titulo = titulo,
-                mensaje = mensaje,
-                idObjeto = idObjeto,
-                tipoObjeto = tipoObjeto,
-                leida = false,
-                fechaCreacion = ahora()
-            )
-        )
-    }
-
     private fun ahora(): String = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US).format(Date())
+
 }

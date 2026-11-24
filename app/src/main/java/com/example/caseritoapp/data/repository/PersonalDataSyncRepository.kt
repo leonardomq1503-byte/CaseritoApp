@@ -3,11 +3,11 @@ package com.example.caseritoapp.data.repository
 import androidx.room.withTransaction
 import com.example.caseritoapp.data.local.CaseritoDatabase
 import com.example.caseritoapp.data.local.entity.FavoritoEntity
-import com.example.caseritoapp.data.local.entity.NotificacionEntity
 import com.example.caseritoapp.data.remote.SupabaseClientProvider
 import com.example.caseritoapp.data.remote.dto.FavoritoCloudDto
 import com.example.caseritoapp.data.remote.dto.NotificacionCloudDto
 import com.example.caseritoapp.data.remote.dto.NotificacionLeidaUpdate
+import com.example.caseritoapp.data.local.entity.NotificacionEntity
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
 import kotlinx.coroutines.Dispatchers
@@ -15,7 +15,8 @@ import kotlinx.coroutines.withContext
 
 class PersonalDataSyncRepository(
     private val database: CaseritoDatabase,
-    private val supabase: SupabaseClient = SupabaseClientProvider.client
+    private val supabase: SupabaseClient = SupabaseClientProvider.client,
+    private val onNewNotification: (NotificacionEntity) -> Unit = {}
 ) {
     suspend fun sincronizar(authUserId: String, localUserId: Long) = withContext(Dispatchers.IO) {
         val operationDao = database.syncOperationDao()
@@ -93,6 +94,7 @@ class PersonalDataSyncRepository(
         }.decodeList<NotificacionCloudDto>()
 
         val dao = database.notificacionDao()
+        val nuevas = mutableListOf<NotificacionEntity>()
         database.withTransaction {
             remotas.forEach { remoto ->
                 val actual = dao.getNotificacionPorIdRemoto(remoto.id)
@@ -108,10 +110,14 @@ class PersonalDataSyncRepository(
                     fechaCreacion = remoto.fechaCreacion,
                     idRemoto = remoto.id
                 )
-                if (actual == null) dao.insertNotificacion(notificacion)
+                if (actual == null) {
+                    dao.insertNotificacion(notificacion)
+                    if (!remoto.leida) nuevas += notificacion
+                }
                 else dao.updateNotificacion(notificacion)
             }
         }
+        nuevas.forEach(onNewNotification)
     }
 
 }
